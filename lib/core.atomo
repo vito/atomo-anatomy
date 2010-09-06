@@ -2,7 +2,7 @@
 main = this
 
 -- a fake file for capturing I/O
-fake-i/o := Port new: "fake-output"
+fake-i/o := Port new: "fake-output" mode: @read
 
 -- override the output port to go to the fake-output file
 current-output-port = Port new: "fake-output" mode: @write
@@ -42,11 +42,45 @@ A pretty: o := o show escape
 A pretty: (p: Pattern) := p show (drop: ("<pattern " length)) init escape
 A pretty: (i: Integer) := i show colored: "purple"
 A pretty: (d: Double) := d show colored: "purple"
+
+pretty-particle = { a p |
+    if: p values (all?: @(== @none))
+        then: { ("@" .. p names (map: @keywordfy) concat) colored: "orange" }
+        else: {
+            initial =
+                p values head match: {
+                    @none -> ""
+                    @(ok: v) -> a pretty: v
+                }
+
+            ks = (0 ... p names length) map: { n |
+                name = p names (at: n)
+                value =
+                    p values (at: n + 1) match: {
+                        @none -> "_"
+                        @(ok: v) -> a pretty: v
+                    }
+
+                name keywordfy (colored: "orange") .. " " .. value
+            }
+
+            "@(" (colored: "orange") .. initial .. ks (join: " ") .. ")" (colored: "orange")
+        }
+}
+
+(a: A) pretty: (p: Particle) :=
+    p type match: {
+        @single -> ("@" .. p name) colored: "orange"
+        @keyword ->
+            pretty-particle call: [a, p]
+    }
+
 A pretty: (c: Char) := c show colored: "purple"
 (a: A) pretty: (l: List) :=
     if: (l all?: @(is-a?: Char))
         then: { l show colored: "forestGreen" }
         else: { "[" .. l (map: { l | a pretty: l }) (join: ", ") .. "]" }
+
 (a: A) pretty: (b: Block) := {
     arguments = b arguments (map: { p | a pretty: p }) (join: " ")
     contents = b contents (map: { e | a pretty: e }) (join: "; ")
@@ -82,53 +116,64 @@ A pretty: (c: Char) := c show colored: "purple"
 
                     if: (e target type == @top)
                         then: { msg }
-                        else: { (a pretty: e target context: @dispatch-single) .. " " .. msg }
+                        else: { (a pretty: e target context: @single) .. " " .. msg }
                 } call
                 @keyword -> {
                     initial =
-                        if: (e targets (at: 0) type == @top)
+                        if: (e targets head type == @top)
                             then: { "" }
-                            else: { (a pretty: e targets (at: 0) context: @dispatch-keyword) .. " " }
+                            else: { (a pretty: e targets head context: @keyword) .. " " }
 
                     rest =
-                        if: (e targets (all?: { v | v type == @top }))
-                            then: { linked call: [e particle names (map: @(.. ":")) concat] }
+                        if: e targets (all?: @(== @top))
+                            then: { linked call: [e particle names (map: @keywordfy) concat] }
                             else: {
                                 ks = (0 ... e particle names length) map: { n |
                                     name = e particle names (at: n)
-                                    value = a pretty: e targets (at: n + 1) context: @dispatch-keyword
-                                    kw =
-                                        if: (name is-operator?)
-                                            then: { name }
-                                            else: { name .. ":" }
+                                    value = a pretty: e targets (at: n + 1) context: @keyword
 
-                                    (linked call: [kw]) .. " " .. value .. " "
+                                    (linked call: [name keywordfy]) .. " " .. value .. " "
                                 }
 
                                 ks concat init
                             }
 
-                    if: ((c == @dispatch-single) || (c == @dispatch-keyword))
+                    if: (c == @single || c == @keyword)
                         then: { "(" .. initial .. rest .. ")" }
                         else: { initial .. rest }
                 } call
             }
         } call
+
         @define ->
             (a pretty: e pattern) .. " := " .. (a pretty: e expression)
         @set ->
             (a pretty: e pattern) .. " = " .. (a pretty: e expression)
+
         @list ->
             (if: (e contents all?: { e | e type == @primitive })
                 then: { a pretty: e evaluate }
                 else: { "[" .. e contents (map: { l | a pretty: l }) (join: ", ") .. "]" })
+
+        @particle ->
+            e particle-type match: {
+                @single -> a pretty: e evaluate
+                @keyword -> pretty-particle call: [a, e]
+            }
+
         @primitive -> a pretty: e evaluate
-        @particle -> e show colored: "orange"
         @block -> a pretty: e evaluate
+
         @call -> ("<span style=\"font-weight: bold\">dispatch</span>")
+
         x -> e show escape
     }
 } call
+
+(s: String) keywordfy :=
+    if: s is-operator?
+        then: { s }
+        else: { s .. ":" }
 
 get-fake-output := {
     main current-output-port close
