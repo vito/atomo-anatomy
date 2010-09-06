@@ -111,7 +111,7 @@ parseDefinition = runParser (do { r <- defParser; eof; return r }) [] "<input>"
 
 defParser :: Parser Definition
 defParser = do
-    thumb <- AP.pDispatch
+    thumb <- try (fmap toDispatch (try AP.pSet <|> AP.pDefine)) <|> AP.pDispatch
     AB.whiteSpace
     cs <- many (try $ AB.symbol "|" >> AP.pDispatch >>= \d -> AB.whiteSpace >> return d)
     AB.whiteSpace
@@ -121,6 +121,11 @@ defParser = do
         , defContracts = cs
         , defReturn = ret
         }
+  where
+    toDispatch (AT.Define { AT.eLocation = l, AT.ePattern = p, AT.eExpr = e }) =
+        AT.Dispatch l (AT.EKeyword (hash [":="]) [":="] [AT.Primitive l (AT.Pattern p), e])
+    toDispatch (AT.Set { AT.eLocation = l, AT.ePattern = p, AT.eExpr = e }) =
+        AT.Dispatch l (AT.EKeyword (hash ["="]) ["="] [AT.Primitive l (AT.Pattern p), e])
 
 -- restore the whitespace that a lexeme parser nom'd up
 unlexeme :: Parser a -> Parser a

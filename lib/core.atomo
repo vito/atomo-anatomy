@@ -19,7 +19,7 @@ A italic: s := s in-tag: "em"
     "<pre class=\"verbatim\">" .. (a pretty: e) .. "</pre>"
 
 (s: String) is-operator? :=
-    s all?: { c | "~!@#$%^&*-_=+./\\|<>?" contains?: c }
+    s all?: { c | "~!@#$%^&*-_=+./\\|<>?:" contains?: c }
 
 (s: String) colored: (c: String) :=
     "<span style=\"color: " .. c .. "\">" .. s escape .. "</span>"
