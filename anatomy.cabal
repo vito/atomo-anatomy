@@ -1,0 +1,40 @@
+name:                anatomy
+version:             0.1
+synopsis:            Anatomy: Atomo documentation system
+homepage:            http://darcsden.com/alex/anatomy
+license:             BSD3
+license-file:        LICENSE
+author:              Alex Suraci
+maintainer:          i.am@toogeneric.com
+category:            Development
+build-type:          Simple
+
+cabal-version:       >= 1.2
+
+data-files:          lib/anatomy.css
+                     lib/core.atomo
+
+
+executable anatomy
+  hs-source-dirs:     src
+  main-is:            Main.hs
+  
+  ghc-prof-options:   -prof -auto-all -caf-all
+  ghc-options:        -O2 -Wall -threaded -fno-warn-unused-do-bind
+
+  -- Packages needed in order to build this package.
+  build-depends:
+    atomo,
+    base >= 4,
+    containers,
+    directory,
+    filepath,
+    hashable,
+    haskeline,
+    mtl,
+    parsec >= 3.0.0,
+    pretty,
+    pretty-show,
+    tagsoup,
+    time,
+    vector

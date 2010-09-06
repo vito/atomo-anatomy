@@ -1,0 +1,185 @@
+-- accessor for the toplevel scope
+main = this
+
+-- a fake file for capturing I/O
+fake-i/o := Port new: "fake-output"
+
+-- override the output port to go to the fake-output file
+current-output-port = Port new: "fake-output" mode: @write
+
+A = Object clone
+
+A bold: s := s in-tag: "strong"
+A italic: s := s in-tag: "em"
+
+(a: A) atomo: (e: Expression) :=
+    "<code>" .. (a pretty: e) .. "</code>"
+
+(a: A) atomo-block: (e: Expression) :=
+    "<pre class=\"verbatim\">" .. (a pretty: e) .. "</pre>"
+
+(s: String) is-operator? :=
+    s all?: { c | "~!@#$%^&*-_=+./\\|<>?" contains?: c }
+
+(s: String) colored: (c: String) :=
+    "<span style=\"color: " .. c .. "\">" .. s escape .. "</span>"
+
+(s: String) escape :=
+    s match: {
+        [] -> ""
+        '<' . ss -> "&lt;" .. ss escape
+        '>' . ss -> "&gt;" .. ss escape
+        '&' . ss -> "&amp;" .. ss escape
+        s . ss -> [s] .. ss escape
+    }
+
+[] join: _ := []
+[x] join: _ := x
+(x . xs) join: (d: List) :=
+    x .. d .. (xs join: d)
+
+A pretty: o := o show escape
+A pretty: (p: Pattern) := p show (drop: ("<pattern " length)) init escape
+A pretty: (i: Integer) := i show colored: "purple"
+A pretty: (d: Double) := d show colored: "purple"
+A pretty: (c: Char) := c show colored: "purple"
+(a: A) pretty: (l: List) :=
+    if: (l all?: @(is-a?: Char))
+        then: { l show colored: "forestGreen" }
+        else: { "[" .. l (map: { l | a pretty: l }) (join: ", ") .. "]" }
+(a: A) pretty: (b: Block) := {
+    arguments = b arguments (map: { p | a pretty: p }) (join: " ")
+    contents = b contents (map: { e | a pretty: e }) (join: "; ")
+    
+    if: contents empty?
+        then: { "{}" }
+        else: {
+            if: b arguments empty?
+                then: { "{ " .. contents .. " }" }
+                else: { "{ " .. arguments .. " | " .. contents .. " }" }
+        }
+} call
+
+(a: A) pretty: (e: Expression) := a pretty: e context: @top
+
+(a: A) pretty: (e: Expression) context: c := {
+    current-output-port = Port standard-output
+
+    e type match: {
+        @dispatch -> {
+            url = a url-for: e
+            linked = { text |
+                url match: {
+                    @none -> text colored: "darkBlue"
+                    @(ok: u) ->
+                        ("<a href=\"" .. u .. "\">" .. (text colored: "darkBlue") .. "</a>")
+                }
+            }
+
+            e dispatch-type match: {
+                @single -> {
+                    msg = linked call: [e particle name]
+
+                    if: (e target type == @top)
+                        then: { msg }
+                        else: { (a pretty: e target context: @dispatch-single) .. " " .. msg }
+                } call
+                @keyword -> {
+                    initial =
+                        if: (e targets (at: 0) type == @top)
+                            then: { "" }
+                            else: { (a pretty: e targets (at: 0) context: @dispatch-keyword) .. " " }
+
+                    rest =
+                        if: (e targets (all?: { v | v type == @top }))
+                            then: { linked call: [e particle names (map: @(.. ":")) concat] }
+                            else: {
+                                ks = (0 ... e particle names length) map: { n |
+                                    name = e particle names (at: n)
+                                    value = a pretty: e targets (at: n + 1) context: @dispatch-keyword
+                                    kw =
+                                        if: (name is-operator?)
+                                            then: { name }
+                                            else: { name .. ":" }
+
+                                    (linked call: [kw]) .. " " .. value .. " "
+                                }
+
+                                ks concat init
+                            }
+
+                    if: ((c == @dispatch-single) || (c == @dispatch-keyword))
+                        then: { "(" .. initial .. rest .. ")" }
+                        else: { initial .. rest }
+                } call
+            }
+        } call
+        @define ->
+            (a pretty: e pattern) .. " := " .. (a pretty: e expression)
+        @set ->
+            (a pretty: e pattern) .. " = " .. (a pretty: e expression)
+        @list ->
+            (if: (e contents all?: { e | e type == @primitive })
+                then: { a pretty: e evaluate }
+                else: { "[" .. e contents (map: { l | a pretty: l }) (join: ", ") .. "]" })
+        @primitive -> a pretty: e evaluate
+        @particle -> e show colored: "orange"
+        @block -> a pretty: e evaluate
+        @call -> ("<span style=\"font-weight: bold\">dispatch</span>")
+        x -> e show escape
+    }
+} call
+
+get-fake-output := {
+    main current-output-port close
+
+    -- for debugging
+    current-output-port = Port standard-output
+
+    fake-i/o ensuring: { in |
+        in close
+        main current-output-port = Port new: "fake-output" mode: @write
+    } do: { in |
+        if: in eof? not
+            then: {
+                with-input-from: in do: {
+                    out = ""
+
+                    while: { in eof? not } do: {
+                        out = out .. read-line .. "\n"
+                    }
+
+                    out escape
+                }
+            }
+            else: { "" }
+    }
+} call
+
+(a: A) interaction: (e: Expression) := {
+    -- pseudo environment for evaluating the expressions
+    env = Object clone
+
+    log = e evaluate contents (map: { e |
+        res = env join: (Block new: [e])
+        "&gt; " .. (a pretty: e) .. "\n" .. get-fake-output .. (a pretty: res) .. "\n"
+    }) concat
+
+    "<pre class=\"interaction\">" .. log .. "</pre>"
+} call
+
+(a: A) example: (e: Expression) :=
+    "<div class=\"example\"><em>Example:</em>" .. (a interaction: e) .. "</div>"
+
+(a: A) link: name to: (url: Expression) := a link: name to: url evaluate
+(a: A) link: (name: Expression) to: url := a link: name evaluate to: url
+A link: (name: String) to: (url: String) :=
+    "<a href=\"" .. url .. "\">" .. name .. "</a>"
+
+A verbatim: (s: String) :=
+    "<pre class=\"verbatim\">" .. s escape .. "</pre>"
+
+A code: (s: String) := s escape in-tag: "code"
+
+(e: Expression) in-tag: t := e evaluate (as: String) in-tag: t
+(s: String) in-tag: t := "<" .. t .. ">" .. s .. "</" .. t .. ">"
