@@ -18,7 +18,7 @@ A italic: s := s in-tag: "em"
 (a: A) atomo-block: (e: Expression) :=
     "<pre class=\"verbatim\">" .. (a pretty: e) .. "</pre>"
 
-(s: String) is-operator? :=
+(s: String) operator? :=
     s all?: { c | "~!@#$%^&*-_=+./\\|<>?:" contains?: c }
 
 (s: String) colored: (c: String) :=
@@ -118,6 +118,7 @@ A pretty: (c: Char) := c show colored: "purple"
                         then: { msg }
                         else: { (a pretty: e target context: @single) .. " " .. msg }
                 } call
+
                 @keyword -> {
                     initial =
                         if: (e targets head type == @top)
@@ -125,17 +126,17 @@ A pretty: (c: Char) := c show colored: "purple"
                             else: { (a pretty: e targets head context: @keyword) .. " " }
 
                     rest =
-                        if: e targets (all?: @(== @top))
+                        if: e targets (map: @type) (all?: @(== @top))
                             then: { linked call: [e particle names (map: @keywordfy) concat] }
                             else: {
                                 ks = (0 ... e particle names length) map: { n |
                                     name = e particle names (at: n)
                                     value = a pretty: e targets (at: n + 1) context: @keyword
 
-                                    (linked call: [name keywordfy]) .. " " .. value .. " "
+                                    (linked call: [name keywordfy]) .. " " .. value
                                 }
 
-                                ks concat init
+                                ks join: " "
                             }
 
                     if: (c == @single || c == @keyword)
@@ -171,7 +172,7 @@ A pretty: (c: Char) := c show colored: "purple"
 } call
 
 (s: String) keywordfy :=
-    if: s is-operator?
+    if: s operator?
         then: { s }
         else: { s .. ":" }
 
