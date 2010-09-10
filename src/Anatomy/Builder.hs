@@ -1,11 +1,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Anatomy.Builder where
 
-import Control.Monad.Error
-import Control.Monad.State hiding (State)
 import Data.Char
 import Data.Dynamic
-import Data.Hashable (hash)
 import Data.IORef
 import System.FilePath
 import Text.HTML.TagSoup
@@ -42,6 +39,7 @@ scan d n ss' = do
         scan' (acc { sectionTitle = Title s (Just t) (Just v) }) ss
     scan' acc (KeywordDispatch ["include-section"] [sfn]:ss) = do
         cfn <- buildForString sfn
+        liftIO (putStrLn ("including section: " ++ cfn))
         p <- liftIO (parseFile cfn)
         case p of
             Right ast -> do
@@ -57,6 +55,8 @@ scan d n ss' = do
                     }) ss
             Left e -> error $ "error including section: " ++ show e
     scan' acc (KeywordDispatch ["section"] [st]:ss) = do
+        liftIO (putStrLn ("subsection: " ++ show st))
+
         sec <- fmap (\s -> s
             { sectionTitle = Title st Nothing Nothing
             , sectionParent = Just (sectionID acc)
@@ -75,7 +75,9 @@ scan d n ss' = do
                 KeywordDispatch ["section"] _ -> False
                 _ -> True) ss
     scan' acc (KeywordDispatch ["define"] [sb]:ss) = do
+        liftIO (putStrLn "definition")
         body <- buildForString sb
+
         case parseDefinition body of
             Right def ->
                 scan' (acc
@@ -85,6 +87,8 @@ scan d n ss' = do
             Left e ->
                 error $ "error parsing definition: " ++ show e ++ "\ndefinition:\n" ++ body
     scan' acc (KeywordDispatch ["define", "body"] [sd, sb]:ss) = do
+        liftIO (putStrLn "definition with body")
+
         body <- buildForString sd
         case parseDefinition body of
             Right def ->
@@ -94,7 +98,9 @@ scan d n ss' = do
                     }) ss
             Left e ->
                 error $ "error parsing definition: " ++ show e ++ "\ndefinition:\n" ++ body
-    scan' acc (SingleDispatch "table-of-contents":ss) =
+    scan' acc (SingleDispatch "table-of-contents":ss) = do
+        liftIO (putStrLn "table of contents")
+
         scan' (acc
             { sectionStyle = TOC
             , sectionBody = sectionBody acc ++ [TableOfContents]
@@ -104,84 +110,89 @@ scan d n ss' = do
 
 
 buildForString :: Segment -> VM String
-buildForString (The e) = eval e >>= valToString
+buildForString (The e) = eval e >>= toString
 buildForString (Chunk s) = return s -- TODO: escaping
 buildForString (Nested ns) = fmap concat (mapM buildForString ns)
 buildForString x = error $ "cannot be built into a string: " ++ show x
 
 build :: Segment -> AVM String
-build (Chunk s) = return s
-build (KeywordDispatch ["section"] [n]) = do
-    sn <- build n
-    return $ "<h4>" ++ sn ++ "</h4>"
-build (KeywordDispatch ns ss) = do
-    vs <- forM ss $ \s ->
-        case s of
-            The e -> return (Expression e)
-            _ -> build s >>= string
+build s = do
+    {-liftIO (putStrLn ("building: " ++ show s))-}
+    build' s
+  where
+    build' (Chunk s) = return s
+    build' (KeywordDispatch ["section"] [n]) = do
+        sn <- build n
+        return $ "<h4>" ++ sn ++ "</h4>"
+    build' (KeywordDispatch ns ss) = do
+        vs <- forM ss $ \s ->
+            case s of
+                The e -> return (Expression e)
+                _ -> build s >>= string
 
-    s <- getAProto
-    res <- lift (dispatch (Keyword (hash ns) ns (s:vs)))
-    lift (valToString res)
-build (SingleDispatch n) = do
-    s <- getAProto
-    res <- lift (dispatch (Single (hash n) n s))
-    lift (valToString res)
-build (The e) = lift (eval e >>= return . show . pretty)
-build (Nested ss) = fmap concat $ mapM build ss
-build (SectionReference n) = do
-    style <- gets sectionStyle
-    if style == TOC
-        then return ""
-        else do
+        a <- getAObject
+        lift (dispatch (keyword ns (a:vs)) >>= toString)
+    build' (SingleDispatch n) = do
+        s <- getAObject
+        res <- lift (dispatch (single n s))
+        lift (toString res)
+    build' (The e@(Set {})) = lift (eval e) >> return ""
+    build' (The e@(Define {})) = lift (eval e) >> return ""
+    build' (The e) = lift (eval e >>= prettyVM >>= return . show)
+    build' (Nested ss) = fmap concat $ mapM build ss
+    build' (SectionReference n) = do
+        style <- gets sectionStyle
+        if style == TOC
+            then return ""
+            else do
 
-    sec <- gets ((!! n) . subSections)
-    flip runAVM sec $ do
-        title <- gets (titleText . sectionTitle)
-        depth <- do
-            myd <- gets sectionDepth
-            mp <- gets sectionParent
-            case mp of
-                Nothing -> return myd
-                Just p -> do
-                    pd <- fmap sectionDepth $ liftIO (readIORef p)
-                    return (myd - pd)
+        sec <- gets ((!! n) . subSections)
+        flip runAVM sec $ do
+            title <- gets (titleText . sectionTitle)
+            depth <- do
+                myd <- gets sectionDepth
+                mp <- gets sectionParent
+                case mp of
+                    Nothing -> return myd
+                    Just p -> do
+                        pd <- fmap sectionDepth $ liftIO (readIORef p)
+                        return (myd - pd)
 
-        t <- build title
-        b <- mapM build (sectionBody sec)
-        let header = "h" ++ show (depth + 1)
-        return . unlines $
-            [ "<div class=\"section\">"
-            , "  " ++ concat
-                [ "<" ++ header ++ " class=\"section-header\" id=\"section_" ++ sanitize t ++ "\">"
-                , t
-                , "</" ++ header ++ ">"
+            t <- build title
+            b <- mapM build (sectionBody sec)
+            let header = "h" ++ show (depth + 1)
+            return . unlines $
+                [ "<div class=\"section\">"
+                , "  " ++ concat
+                    [ "<" ++ header ++ " class=\"section-header\" id=\"section_" ++ sanitize t ++ "\">"
+                    , t
+                    , "</" ++ header ++ ">"
+                    ]
+                , "  " ++ concat b
+                , "</div>"
                 ]
-            , "  " ++ concat b
+    build' TableOfContents =
+        get >>= buildTOC >>= return . printTOC
+    build' FullTableOfContents =
+        get >>= buildTOC >>= return . printFullTOC
+    build' (InlineDefinition d b) = do
+        a <- getAObject
+        thumb <- lift $ dispatch (keyword ["pretty"] [a, Expression (defThumb d)]) >>= toString
+        pr <- lift $ dispatch (keyword ["pretty"] [a, Expression (defReturn d)]) >>= toString
+        pcs <- lift $ mapM (\c -> dispatch (keyword ["pretty"] [a, Expression c]) >>= toString) (defContracts d)
+        body <- maybe (return "") (fmap (++ "\n\n") . build) b
+        return . unlines $
+            [ "<div class=\"definition\" id=\"" ++ bindingID (defKey d) ++ "\">"
+            , "  <pre class=\"thumb\">" ++ concat
+                [ thumb
+                , " <span class=\"definition-result-arrow\">&rarr;</span> "
+                , pr
+                , concatMap ("\n  | " ++) pcs
+                ] ++ "</pre>"
+            , body
+            , ""
             , "</div>"
             ]
-build TableOfContents =
-    get >>= buildTOC >>= return . printTOC
-build FullTableOfContents =
-    get >>= buildTOC >>= return . printFullTOC
-build (InlineDefinition d b) = do
-    a <- getAProto
-    thumb <- lift $ dispatch (Keyword (hash ["pretty"]) ["pretty"] [a, Expression (defThumb d)]) >>= valToString
-    pr <- lift $ dispatch (Keyword (hash ["pretty"]) ["pretty"] [a, Expression (defReturn d)]) >>= valToString
-    pcs <- lift $ mapM (\c -> dispatch (Keyword (hash ["pretty"]) ["pretty"] [a, Expression c]) >>= valToString) (defContracts d)
-    body <- maybe (return "") (fmap (++ "\n\n") . build) b
-    return . unlines $
-        [ "<div class=\"definition\" id=\"" ++ bindingID (defKey d) ++ "\">"
-        , "  <pre class=\"thumb\">" ++ concat
-            [ thumb
-            , " <span class=\"definition-result-arrow\">&rarr;</span> "
-            , pr
-            , concatMap ("\n  | " ++) pcs
-            ] ++ "</pre>"
-        , body
-        , ""
-        , "</div>"
-        ]
 
 buildTOC :: Section -> AVM TOCTree
 buildTOC s
@@ -220,7 +231,11 @@ buildFile fn o = do
             sec <- newSection id
             estart <- runA (lift $ scan 0 1 ast) sec
 
+            putStrLn "scanned document"
+
             flip (either (print . pretty)) estart $ \start -> do
+                putStrLn "building document"
+
                 res <- runA (buildDocument o) start
                 case res of
                     Left e -> print . pretty $ e
@@ -229,15 +244,27 @@ buildFile fn o = do
 
 buildDocument :: FilePath -> AVM ()
 buildDocument o = do
+    liftIO (putStrLn ("building document to: " ++ o))
+
     s <- get
+
+    liftIO . print . titleText $ sectionTitle s
     if sectionStyle s == TOC
-        then mapM_ (runAVM (buildDocument o)) (subSections s)
+        then do
+            liftIO (putStrLn "building subsections first for table of contents")
+            mapM_ (runAVM (buildDocument o)) (subSections s)
         else return ()
 
+    liftIO (putStrLn "building table of contents")
     toc <- build TableOfContents
+
+    liftIO (putStrLn "building title")
     title <- build . titleText . sectionTitle $ s
+
+    liftIO (putStrLn "building body")
     body <- fmap concat $ mapM build (sectionBody s)
 
+    liftIO (putStrLn "getting parent")
     parent <-
         case sectionParent s of
             Nothing -> return Nothing
@@ -246,7 +273,10 @@ buildDocument o = do
                     >>= runAVM (build FullTableOfContents)
                     >>= return . Just
 
+    liftIO (putStr "writing document to...")
     fn <- sectionURL s
+    liftIO (putStrLn fn)
+
     liftIO . writeFile (o </> fn) $
         format toc title body parent
   where
@@ -277,14 +307,14 @@ buildDocument o = do
         , "</html>"
         ]
 
-getAProto :: AVM Value
-getAProto = do
+getAObject :: AVM Value
+getAObject = do
     s <- get
     a <- lift (here "A")
     lift . newObject $ \o -> o
         { oDelegates = oDelegates o ++ [a]
         , oMethods = 
-            ( addMethod (Slot (PSingle (hash "state") "state" PSelf) (Haskell (toDyn s))) IM.empty
+            ( addMethod (Slot (psingle "state" PSelf) (Haskell (toDyn s))) IM.empty
             , IM.empty
             )
         }
@@ -455,13 +485,8 @@ sanitize (s:ss)
     | otherwise = '_' : sanitize ss
 
 buildForString' :: Segment -> AVM String
-buildForString' (The e) = lift (eval e >>= valToString)
+buildForString' (The e) = lift (eval e >>= toString)
 buildForString' x = build x
-
-valToString :: Value -> VM String
-valToString (List v) =
-    fmap (map (\(Char c) -> c) . V.toList) (liftIO (readIORef v))
-valToString x = error $ "not a string: " ++ show x
 
 trimFragment :: String -> String
 trimFragment = takeWhile (/= '#')

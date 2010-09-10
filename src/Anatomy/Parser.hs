@@ -1,9 +1,9 @@
-module Anatomy.Parser where
+module Anatomy.Parser (parse, parseFile, parseDefinition) where
 
 import Data.Char (isSpace)
 import Data.Hashable (hash)
 import Data.List (intercalate)
-import Text.Parsec
+import Text.Parsec hiding (parse)
 import Atomo.Parser.Base (Parser)
 import qualified Atomo.Types as AT
 import qualified Atomo.Parser as AP

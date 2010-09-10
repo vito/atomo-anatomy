@@ -33,11 +33,6 @@ A italic: s := s in-tag: "em"
         s . ss -> [s] .. ss escape
     }
 
-[] join: _ := []
-[x] join: _ := x
-(x . xs) join: (d: List) :=
-    x .. d .. (xs join: d)
-
 A pretty: o := o show escape
 A pretty: (p: Pattern) := p show (drop: ("<pattern " length)) init escape
 A pretty: (i: Integer) := i show colored: "purple"
@@ -202,10 +197,11 @@ get-fake-output := {
     }
 } call
 
-(a: A) interaction: (e: Expression) := {
-    -- pseudo environment for evaluating the expressions
-    env = Object clone
-
+(a: A) interaction: (e: Expression) :=
+    a interaction: e on: Object clone
+(a: A) interaction: (e: Expression) on: (t: Expression) :=
+    a interaction: e on: (dispatch sender join: (Block new: [t]))
+(a: A) interaction: (e: Expression) on: env := {
     log = e evaluate contents (map: { e |
         res = env join: (Block new: [e])
         "&gt; " .. (a pretty: e) .. "\n" .. get-fake-output .. (a pretty: res) .. "\n"

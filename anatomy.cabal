@@ -37,4 +37,5 @@ executable anatomy
     pretty-show,
     tagsoup,
     time,
+    transformers,
     vector
