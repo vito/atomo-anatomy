@@ -46,6 +46,7 @@ data Section =
         , subSections :: [Section] -- included sections
         , sectionDepth :: Int
         , sectionNumber :: Int
+        , sectionPath :: FilePath
         }
     deriving (Show, Typeable)
 

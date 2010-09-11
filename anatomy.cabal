@@ -15,6 +15,35 @@ data-files:          lib/anatomy.css
                      lib/core.atomo
 
 
+library
+  hs-source-dirs:    src
+
+  build-depends:
+    atomo,
+    base >= 4,
+    containers,
+    directory,
+    filepath,
+    hashable,
+    haskeline,
+    mtl,
+    parsec >= 3.0.0,
+    pretty,
+    pretty-show,
+    tagsoup,
+    time,
+    transformers,
+    vector
+
+  exposed-modules:
+    Anatomy.AutoFlow,
+    Anatomy.Builder,
+    Anatomy.Debug,
+    Anatomy.Parser,
+    Anatomy.Types,
+    Paths_anatomy
+
+
 executable anatomy
   hs-source-dirs:     src
   main-is:            Main.hs

@@ -4,6 +4,7 @@ module Anatomy.Builder where
 import Data.Char
 import Data.Dynamic
 import Data.IORef
+import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup
 import qualified Data.IntMap as IM
@@ -23,9 +24,14 @@ import Paths_anatomy
 
 
 -- scan through everything and build up the initial state for generation
-scan :: Int -> Int -> [Segment] -> VM Section
-scan d n ss' = do
-    sec <- liftIO . newSection $ \s -> s { sectionDepth = d, sectionNumber = n }
+scan :: Int -> Int -> FilePath -> [Segment] -> VM Section
+scan d n p ss' = do
+    sec <- liftIO . newSection $ \s -> s
+        { sectionDepth = d
+        , sectionNumber = n
+        , sectionPath = p
+        }
+
     st <- scan' sec ss'
     liftIO (writeIORef (sectionID st) st)
     return st
@@ -39,12 +45,13 @@ scan d n ss' = do
         scan' (acc { sectionTitle = Title s (Just t) (Just v) }) ss
     scan' acc (KeywordDispatch ["include-section"] [sfn]:ss) = do
         cfn <- buildForString sfn
-        liftIO (putStrLn ("including section: " ++ cfn))
-        p <- liftIO (parseFile cfn)
+        fn <- findFile [sectionPath acc, ""] cfn
+        liftIO (putStrLn ("including section: " ++ fn))
+        p <- liftIO (parseFile fn)
         case p of
             Right ast -> do
                 sec <- fmap (\s -> s { sectionParent = Just (sectionID acc) }) $
-                    scan (d + 1) (length (subSections acc) + 1) ast
+                    scan (d + 1) (length (subSections acc) + 1) (takeDirectory fn) ast
 
                 liftIO (writeIORef (sectionID sec) sec)
 
@@ -54,13 +61,22 @@ scan d n ss' = do
                     , subSections = subSections acc ++ [sec]
                     }) ss
             Left e -> error $ "error including section: " ++ show e
+      where
+        findFile [] fn = throwError (ErrorMsg ("file not found: " ++ fn))
+        findFile (p:ps) fn = do
+            check <- liftIO . doesFileExist $ p </> fn
+
+            if check
+                then liftIO (canonicalizePath (p </> fn))
+                else findFile ps fn
+            
     scan' acc (KeywordDispatch ["section"] [st]:ss) = do
         liftIO (putStrLn ("subsection: " ++ show st))
 
         sec <- fmap (\s -> s
             { sectionTitle = Title st Nothing Nothing
             , sectionParent = Just (sectionID acc)
-            }) $ scan (d + 1) (length (subSections acc) + 1) sb
+            }) $ scan (d + 1) (length (subSections acc) + 1) "" sb
 
         liftIO (writeIORef (sectionID sec) sec)
 
@@ -225,11 +241,12 @@ buildFile fn o = do
     css <- getDataFileName "lib/anatomy.css" >>= readFile
     writeFile (o </> "anatomy.css") css
 
+    path <- fmap takeDirectory $ canonicalizePath fn
     p <- parseFile fn
     case p of
         Right ast -> do
-            sec <- newSection id
-            estart <- runA (lift $ scan 0 1 ast) sec
+            sec <- newSection $ \s -> s { sectionPath = path }
+            estart <- runA (lift $ scan 0 1 path ast) sec
 
             putStrLn "scanned document"
 
@@ -342,14 +359,34 @@ newSection f = do
         , subSections = []
         , sectionDepth = 0
         , sectionNumber = 1
+        , sectionPath = ""
         }
 
     readIORef r
 
 initA :: VM ()
 initA = do
+    ([$p|A|] =::) =<< eval [$e|Object clone|]
+
     liftIO (getDataFileName "lib/core.atomo") >>= loadFile
 
+    [$p|(a: A) new: (fn: String)|] =: do
+        fn <- here "fn" >>= toString
+
+        path <- fmap takeDirectory . liftIO $ canonicalizePath fn
+        
+        liftIO (putStrLn ("path: " ++ path))
+        parse <- liftIO (parseFile fn)
+        case parse of
+            Right ast -> do
+                liftIO (putStrLn "parse ok!")
+                sec <- scan 0 1 path ast
+                [$p|a state|] =:: Haskell (toDyn sec)
+                here "a"
+            Left e -> do
+                liftIO (putStrLn "parse failed!")
+                throwError (ParseError e)
+        
     [$p|(a: A) url-for: (e: Expression)|] =: do
         Expression ae <- here "e" >>= findValue isExpression
         Haskell a <- eval [$e|a state|]
