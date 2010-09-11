@@ -1,14 +1,6 @@
 -- accessor for the toplevel scope
 main = this
 
--- a fake file for capturing I/O
-fake-i/o := Port new: "fake-output" mode: @read
-
--- override the output port to go to the fake-output file
-current-output-port = Port new: "fake-output" mode: @write
-
-A = Object clone
-
 A bold: s := s in-tag: "strong"
 A italic: s := s in-tag: "em"
 
@@ -21,8 +13,8 @@ A italic: s := s in-tag: "em"
 (s: String) operator? :=
     s all?: { c | "~!@#$%^&*-_=+./\\|<>?:" contains?: c }
 
-(s: String) colored: (c: String) :=
-    "<span style=\"color: " .. c .. "\">" .. s escape .. "</span>"
+(s: String) type: (c: String) :=
+    "<span class=\"" .. c .. "\">" .. s .. "</span>"
 
 (s: String) escape :=
     s match: {
@@ -34,13 +26,14 @@ A italic: s := s in-tag: "em"
     }
 
 A pretty: o := o show escape
-A pretty: (p: Pattern) := p show (drop: ("<pattern " length)) init escape
-A pretty: (i: Integer) := i show colored: "purple"
-A pretty: (d: Double) := d show colored: "purple"
+A pretty: (c: Char) := c show type: "char"
+A pretty: (d: Double) := d show type: "number double"
+A pretty: (i: Integer) := i show type: "number integer"
+A pretty: (p: Pattern) := p show (drop: "<pattern " length) init escape type: "pattern"
 
 pretty-particle = { a p |
     if: p values (all?: @(== @none))
-        then: { ("@" .. p names (map: @keywordfy) concat) colored: "orange" }
+        then: { ("@" .. p names (map: { n | n keywordfy escape (type: "names") }) concat) type: "particle" }
         else: {
             initial =
                 p values head match: {
@@ -56,36 +49,35 @@ pretty-particle = { a p |
                         @(ok: v) -> a pretty: v
                     }
 
-                name keywordfy (colored: "orange") .. " " .. value
+                name keywordfy escape (type: "names") .. " " .. value
             }
 
-            "@(" (colored: "orange") .. initial .. ks (join: " ") .. ")" (colored: "orange")
+            ("@(" initial .. ks (join: " ") .. ")") type: "particle"
         }
 }
 
 (a: A) pretty: (p: Particle) :=
     p type match: {
-        @single -> ("@" .. p name) colored: "orange"
+        @single -> ("@" .. p name escape (type: "name")) type: "particle"
         @keyword ->
             pretty-particle call: [a, p]
     }
 
-A pretty: (c: Char) := c show colored: "purple"
 (a: A) pretty: (l: List) :=
     if: (l all?: @(is-a?: Char))
-        then: { l show colored: "forestGreen" }
-        else: { "[" .. l (map: { l | a pretty: l }) (join: ", ") .. "]" }
+        then: { l show escape type: "string" }
+        else: { ("[" .. l (map: { l | a pretty: l }) (join: ", ") .. "]") type: "list" }
 
 (a: A) pretty: (b: Block) := {
     arguments = b arguments (map: { p | a pretty: p }) (join: " ")
     contents = b contents (map: { e | a pretty: e }) (join: "; ")
     
     if: contents empty?
-        then: { "{}" }
+        then: { "{}" type: "block" }
         else: {
             if: b arguments empty?
-                then: { "{ " .. contents .. " }" }
-                else: { "{ " .. arguments .. " | " .. contents .. " }" }
+                then: { ("{ " .. contents .. " }") type: "block" }
+                else: { ("{ " .. arguments .. " | " .. contents .. " }") type: "block" }
         }
 } call
 
@@ -98,10 +90,11 @@ A pretty: (c: Char) := c show colored: "purple"
         @dispatch -> {
             url = a url-for: e
             linked = { text |
+                n = text escape type: "dispatch single"
                 url match: {
-                    @none -> text colored: "darkBlue"
+                    @none -> n
                     @(ok: u) ->
-                        ("<a href=\"" .. u .. "\">" .. (text colored: "darkBlue") .. "</a>")
+                        ("<a href=\"" .. u .. "\">" .. n .. "</a>")
                 }
             }
 
@@ -172,12 +165,12 @@ A pretty: (c: Char) := c show colored: "purple"
         else: { s .. ":" }
 
 get-fake-output := {
-    main current-output-port close
-
     -- for debugging
     current-output-port = Port standard-output
 
-    fake-i/o ensuring: { in |
+    main current-output-port close
+
+    (Port new: "fake-output" mode: @read) ensuring: { in |
         in close
         main current-output-port = Port new: "fake-output" mode: @write
     } do: { in |
@@ -202,10 +195,15 @@ get-fake-output := {
 (a: A) interaction: (e: Expression) on: (t: Expression) :=
     a interaction: e on: (dispatch sender join: (Block new: [t]))
 (a: A) interaction: (e: Expression) on: env := {
+    main current-output-port = Port new: "fake-output" mode: @write
+
     log = e evaluate contents (map: { e |
         res = env join: (Block new: [e])
         "&gt; " .. (a pretty: e) .. "\n" .. get-fake-output .. (a pretty: res) .. "\n"
     }) concat
+
+    main current-output-port close
+    main current-output-port = Port standard-output
 
     "<pre class=\"interaction\">" .. log .. "</pre>"
 } call
