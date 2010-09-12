@@ -1,6 +1,7 @@
 -- accessor for the toplevel scope
 indent-level = Parameter new: 0
 multiline-pretty? = Parameter new: False
+docs-root = Parameter new: ""
 
 A bold: s := s in-tag: "strong"
 A italic: s := s in-tag: "em"
@@ -53,7 +54,7 @@ pretty-particle = { a p |
                 name keywordfy escape (type: "names") .. " " .. value
             }
 
-            ("@(" initial .. ks (join: " ") .. ")") type: "particle"
+            ("@(" .. initial .. ks (join: " ") .. ")") type: "particle"
         }
 }
 
@@ -71,7 +72,7 @@ pretty-particle = { a p |
 
 (a: A) pretty: (b: Block) := {
     indent = indent-level _? + 1
-    indent-level set: indent
+    indent-level =! indent
 
     arguments = b arguments (map: { p | a pretty: p }) (join: " ")
 
@@ -87,14 +88,14 @@ pretty-particle = { a p |
             }
             else: { " " .. pretty-contents (join: "; ") .. " " }
     
-    indent-level set: indent - 1
+    indent-level =! indent - 1
 
     if: contents empty?
         then: { "{}" type: "block" }
         else: {
             if: b arguments empty?
                 then: { ("{" .. contents .. "}") type: "block" }
-                else: { ("{ " .. arguments .. " | " .. contents .. " }") type: "block" }
+                else: { ("{ " .. arguments .. " |" .. contents .. "}") type: "block" }
         }
 } call
 
@@ -111,7 +112,7 @@ pretty-particle = { a p |
                 url match: {
                     @none -> n
                     @(ok: u) ->
-                        ("<a href=\"" .. u .. "\">" .. n .. "</a>")
+                        ("<a href=\"" .. docs-root _? .. u .. "\">" .. n .. "</a>")
                 }
             }
 
@@ -186,7 +187,7 @@ get-fake-output := {
 
     (Port new: "fake-output" mode: @read) ensuring: { in |
         in close
-        current-output-port set: (Port new: "fake-output" mode: @write)
+        current-output-port set-default: (Port new: "fake-output" mode: @write)
     } do: { in |
         if: in eof? not
             then: {
