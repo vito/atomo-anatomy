@@ -215,7 +215,7 @@ get-fake-output := {
 (a: A) interaction: (b: Block) on: env := {
     "interaction" print
     b print
-    log = with-output-to: "fake-output" do: {
+    log = with-all-output-to: "fake-output" do: {
         b contents (map: { e |
             res = env join: (Block new: [e])
             "&gt; " .. (a pretty: e) .. "\n" .. get-fake-output .. (a pretty: res) .. "\n"
