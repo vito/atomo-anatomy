@@ -1,5 +1,6 @@
 -- accessor for the toplevel scope
-main = this
+indent-level = Parameter new: 0
+multiline-pretty? = Parameter new: False
 
 A bold: s := s in-tag: "strong"
 A italic: s := s in-tag: "em"
@@ -69,14 +70,30 @@ pretty-particle = { a p |
         else: { ("[" .. l (map: { l | a pretty: l }) (join: ", ") .. "]") type: "list" }
 
 (a: A) pretty: (b: Block) := {
+    indent = indent-level _? + 1
+    indent-level set: indent
+
     arguments = b arguments (map: { p | a pretty: p }) (join: " ")
-    contents = b contents (map: { e | a pretty: e }) (join: "; ")
+
+    pretty-contents = b contents (map: { e | a pretty: e })
+    contents =
+        if: multiline-pretty? _?
+            then: {
+                exprs = pretty-contents (map: { c |
+                    "\n" .. (' ' replicate: (indent * 2)) .. c
+                }) concat
+
+                exprs .. "\n" .. (' ' replicate: ((indent - 1) * 2))
+            }
+            else: { " " .. pretty-contents (join: "; ") .. " " }
     
+    indent-level set: indent - 1
+
     if: contents empty?
         then: { "{}" type: "block" }
         else: {
             if: b arguments empty?
-                then: { ("{ " .. contents .. " }") type: "block" }
+                then: { ("{" .. contents .. "}") type: "block" }
                 else: { ("{ " .. arguments .. " | " .. contents .. " }") type: "block" }
         }
 } call
@@ -165,14 +182,11 @@ pretty-particle = { a p |
         else: { s .. ":" }
 
 get-fake-output := {
-    -- for debugging
-    current-output-port = Port standard-output
-
-    main current-output-port close
+    current-output-port _? close
 
     (Port new: "fake-output" mode: @read) ensuring: { in |
         in close
-        main current-output-port = Port new: "fake-output" mode: @write
+        current-output-port set: (Port new: "fake-output" mode: @write)
     } do: { in |
         if: in eof? not
             then: {
@@ -191,19 +205,21 @@ get-fake-output := {
 } call
 
 (a: A) interaction: (e: Expression) :=
-    a interaction: e on: Object clone
+    a interaction: e evaluate on: Object clone
+(a: A) interaction: (b: Block) :=
+    a interaction: b on: Object clone
+
 (a: A) interaction: (e: Expression) on: (t: Expression) :=
-    a interaction: e on: (dispatch sender join: (Block new: [t]))
-(a: A) interaction: (e: Expression) on: env := {
-    main current-output-port = Port new: "fake-output" mode: @write
-
-    log = e evaluate contents (map: { e |
-        res = env join: (Block new: [e])
-        "&gt; " .. (a pretty: e) .. "\n" .. get-fake-output .. (a pretty: res) .. "\n"
-    }) concat
-
-    main current-output-port close
-    main current-output-port = Port standard-output
+    a interaction: e evaluate on: (dispatch sender join: (Block new: [t]))
+(a: A) interaction: (b: Block) on: env := {
+    "interaction" print
+    b print
+    log = with-output-to: "fake-output" do: {
+        b contents (map: { e |
+            res = env join: (Block new: [e])
+            "&gt; " .. (a pretty: e) .. "\n" .. get-fake-output .. (a pretty: res) .. "\n"
+        }) concat
+    }
 
     File delete: "fake-output"
 
