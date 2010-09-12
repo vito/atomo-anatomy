@@ -205,6 +205,8 @@ get-fake-output := {
     main current-output-port close
     main current-output-port = Port standard-output
 
+    File delete: "fake-output"
+
     "<pre class=\"interaction\">" .. log .. "</pre>"
 } call
 
