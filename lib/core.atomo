@@ -46,7 +46,7 @@ pretty-particle = { a p |
             ks = (0 ... p names length) map: { n |
                 name = p names (at: n)
                 value =
-                    p values (at: n + 1) match: {
+                    p values (at: (n + 1)) match: {
                         @none -> "_"
                         @(ok: v) -> a pretty: v
                     }
@@ -137,7 +137,7 @@ pretty-particle = { a p |
                             else: {
                                 ks = (0 ... e particle names length) map: { n |
                                     name = e particle names (at: n)
-                                    value = a pretty: e targets (at: n + 1) context: @keyword
+                                    value = a pretty: e targets (at: (n + 1)) context: @keyword
 
                                     (linked call: [name keywordfy]) .. " " .. value
                                 }
@@ -199,22 +199,7 @@ pretty-particle = { a p |
         then: { s }
         else: { s .. ":" }
 
-get-fake-output :=
-    with-input-from: "fake-output" do: {
-        in = current-input-port _?
-
-        if: in eof? not
-            then: {
-                out = ""
-
-                while: { in eof? not } do: {
-                    out = out .. read-line .. "\n"
-                }
-
-                out escape
-            }
-            else: { "" }
-    }
+get-fake-output := File read: "fake-output"
 
 (a: A) interaction: (e: Expression) :=
     a interaction: e evaluate on: Object clone
