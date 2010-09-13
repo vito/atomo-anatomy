@@ -199,28 +199,22 @@ pretty-particle = { a p |
         then: { s }
         else: { s .. ":" }
 
-get-fake-output := {
-    current-output-port _? close
+get-fake-output :=
+    with-input-from: "fake-output" do: {
+        in = current-input-port _?
 
-    (Port new: "fake-output" mode: @read) ensuring: { in |
-        in close
-        current-output-port set-default: (Port new: "fake-output" mode: @write)
-    } do: { in |
         if: in eof? not
             then: {
-                with-input-from: in do: {
-                    out = ""
+                out = ""
 
-                    while: { in eof? not } do: {
-                        out = out .. read-line .. "\n"
-                    }
-
-                    out escape
+                while: { in eof? not } do: {
+                    out = out .. read-line .. "\n"
                 }
+
+                out escape
             }
             else: { "" }
     }
-} call
 
 (a: A) interaction: (e: Expression) :=
     a interaction: e evaluate on: Object clone
@@ -232,15 +226,18 @@ get-fake-output := {
 (a: A) interaction: (b: Block) on: env := {
     "interaction" print
     b print
-    log = with-all-output-to: "fake-output" do: {
-        b contents (map: { e |
-            res = env join: (Block new: [e])
+    log =  b contents (map: { e |
+        {
+            res = with-all-output-to: "fake-output" do: {
+                env join: (Block new: [e])
+            }
+
             "&gt; " .. (a pretty: e) .. "\n" .. get-fake-output .. (a pretty: res) .. "\n"
-        }) concat
-    }
+        } ensuring: { File delete: "fake-output" }
+    }) concat
 
     "<pre class=\"interaction\">" .. log .. "</pre>"
-} ensuring: { File delete: "fake-output" }
+} call
 
 (a: A) example: (e: Expression) :=
     "<div class=\"example\"><em>Example:</em>" .. (a interaction: e) .. "</div>"
