@@ -126,7 +126,7 @@ scan d n p ss' = do
 
 
 buildForString :: Segment -> VM String
-buildForString (The e) = eval e >>= toString
+buildForString (The e) = fmap fromString (eval e)
 buildForString (Chunk s) = return s -- TODO: escaping
 buildForString (Nested ns) = fmap concat (mapM buildForString ns)
 buildForString x = error $ "cannot be built into a string: " ++ show x
@@ -144,14 +144,14 @@ build s = do
         vs <- forM ss $ \s ->
             case s of
                 The e -> return (Expression e)
-                _ -> build s >>= string
+                _ -> fmap string (build s)
 
         a <- getAObject
-        lift (dispatch (keyword ns (a:vs)) >>= toString)
+        fmap fromString $ lift (dispatch (keyword ns (a:vs)))
     build' (SingleDispatch n) = do
         s <- getAObject
         res <- lift (dispatch (single n s))
-        lift (toString res)
+        return (fromString res)
     build' (The e@(Set {})) = lift (eval e) >> return ""
     build' (The e@(Define {})) = lift (eval e) >> return ""
     build' (The e) = lift (eval e >>= prettyVM >>= return . show)
@@ -193,9 +193,9 @@ build s = do
         get >>= buildTOC >>= return . printFullTOC
     build' (InlineDefinition d b) = do
         a <- getAObject
-        thumb <- lift $ dispatch (keyword ["pretty"] [a, Expression (defThumb d)]) >>= toString
-        pr <- lift $ dispatch (keyword ["pretty"] [a, Expression (defReturn d)]) >>= toString
-        pcs <- lift $ mapM (\c -> dispatch (keyword ["pretty"] [a, Expression c]) >>= toString) (defContracts d)
+        thumb <- fmap fromString . lift $ dispatch (keyword ["pretty"] [a, Expression (defThumb d)])
+        pr <- fmap fromString . lift $ dispatch (keyword ["pretty"] [a, Expression (defReturn d)])
+        pcs <- lift $ mapM (\c -> fmap fromString $ dispatch (keyword ["pretty"] [a, Expression c])) (defContracts d)
         body <- maybe (return "") (fmap (++ "\n\n") . build) b
         return . unlines $
             [ "<div class=\"definition\" id=\"" ++ bindingID (defKey d) ++ "\">"
@@ -371,7 +371,7 @@ initA = do
     liftIO (getDataFileName "lib/core.atomo") >>= loadFile
 
     [$p|(a: A) new: (fn: String)|] =: do
-        fn <- here "fn" >>= toString
+        fn <- getString [$e|fn|]
 
         path <- fmap takeDirectory . liftIO $ canonicalizePath fn
         
@@ -403,24 +403,23 @@ initA = do
 
         case find of
             Nothing -> return (particle "none")
-            Just u -> do
-                url <- string u
-                return (keyParticle ["ok"] [Nothing, Just url])
+            Just u ->
+                return (keyParticle ["ok"] [Nothing, Just (string u)])
 
     [$p|(a: A) reference: (s: String)|] =: do
-        n <- fmap V.toList $ getList [$e|s|]
+        n <- getString [$e|s|]
         Haskell a <- eval [$e|a state|]
 
         let st = fromDyn a (error "hotlink A is invalid") :: Section
 
         flip runAVM' st $ do
-            ms <- findSection (map (\(Char c) -> c) n) st
+            ms <- findSection n st
             case ms of
-                Nothing -> list n
+                Nothing -> return (string n)
                 Just s -> do
                     url <- sectionURL s
                     name <- build (titleText (sectionTitle s))
-                    string $ "<a href=\"" ++ url ++ "\">" ++ name ++ "</a>"
+                    return (string $ "<a href=\"" ++ url ++ "\">" ++ name ++ "</a>")
 
 findSection :: String -> Section -> AVM (Maybe Section)
 findSection n s = do
@@ -522,7 +521,7 @@ sanitize (s:ss)
     | otherwise = '_' : sanitize ss
 
 buildForString' :: Segment -> AVM String
-buildForString' (The e) = lift (eval e >>= toString)
+buildForString' (The e) = lift (fmap fromString (eval e))
 buildForString' x = build x
 
 trimFragment :: String -> String

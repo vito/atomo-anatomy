@@ -20,11 +20,11 @@ A italic: s := s in-tag: "em"
 
 (s: String) escape :=
     s match: {
-        [] -> ""
+        "" -> ""
         '<' . ss -> "&lt;" .. ss escape
         '>' . ss -> "&gt;" .. ss escape
         '&' . ss -> "&amp;" .. ss escape
-        s . ss -> [s] .. ss escape
+        s . ss -> s . ss escape
     }
 
 A pretty: o := o show escape
@@ -35,7 +35,7 @@ A pretty: (p: Pattern) := p show (drop: "<pattern " length) init escape type: "p
 
 pretty-particle = { a p |
     if: p values (all?: @(== @none))
-        then: { ("@" .. p names (map: { n | n keywordfy escape (type: "names") }) concat) type: "particle" }
+        then: { ("@" .. p names (map: { n | n keywordfy escape (type: "names") }) join) type: "particle" }
         else: {
             initial =
                 p values head match: {
@@ -81,10 +81,10 @@ pretty-particle = { a p |
         if: multiline-pretty? _?
             then: {
                 exprs = pretty-contents (map: { c |
-                    "\n" .. (' ' replicate: (indent * 2)) .. c
-                }) concat
+                    "\n" .. (' ' repeat: (indent * 2)) .. c
+                }) join
 
-                exprs .. "\n" .. (' ' replicate: ((indent - 1) * 2))
+                exprs .. "\n" .. (' ' repeat: ((indent - 1) * 2))
             }
             else: { " " .. pretty-contents (join: "; ") .. " " }
     
@@ -133,7 +133,7 @@ pretty-particle = { a p |
 
                     rest =
                         if: e targets (map: @type) (all?: @(== @top))
-                            then: { linked call: [e particle names (map: @keywordfy) concat] }
+                            then: { linked call: [e particle names (map: @keywordfy) join] }
                             else: {
                                 ks = (0 ... e particle names length) map: { n |
                                     name = e particle names (at: n)
@@ -162,7 +162,7 @@ pretty-particle = { a p |
                         a pretty: e expression
                     }
 
-                    pat .. " :=\n" .. (' ' replicate: (indent * 2)) .. expr .. "\n"
+                    pat .. " :=\n" .. (' ' repeat: (indent * 2)) .. expr .. "\n"
                 }
                 else: {
                     expr = a pretty: e expression
@@ -218,8 +218,11 @@ get-fake-output := File read: "fake-output"
             }
 
             "&gt; " .. (a pretty: e) .. "\n" .. get-fake-output .. (a pretty: res) .. "\n"
-        } ensuring: { File delete: "fake-output" }
-    }) concat
+        } ensuring: {
+            when: File (exists?: "fake-output")
+                do: { File delete: "fake-output" }
+        }
+    }) join
 
     "<pre class=\"interaction\">" .. log .. "</pre>"
 } call
