@@ -253,10 +253,8 @@ buildFile fn o = do
             flip (either (print . pretty)) estart $ \start -> do
                 putStrLn "building document"
 
-                res <- runA (buildDocument o) start
-                case res of
-                    Left e -> print . pretty $ e
-                    Right _ -> return ()
+                runA (buildDocument o) start
+                return ()
         Left e -> print e
 
 buildDocument :: FilePath -> AVM ()
@@ -343,7 +341,7 @@ runAVM' :: AVM a -> Section -> VM a
 runAVM' = evalStateT
 
 runA :: AVM a -> Section -> IO (Either AtomoError a)
-runA a s = evalStateT (runErrorT (initEnv >> initA >> evalStateT a s)) startEnv
+runA a s = evalStateT (runErrorT ((initEnv >> initA >> evalStateT a s) `catchError` (\e -> printError e >> throwError e))) startEnv
 
 newSection :: (Section -> Section) -> IO Section
 newSection f = do
