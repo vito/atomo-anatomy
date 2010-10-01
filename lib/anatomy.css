@@ -99,9 +99,39 @@ p {
     margin-bottom: 1em;
 }
 
-.verbatim {
-    margin: 0 1em 1em 1em;
+.verbatim, .interaction {
+    margin: 0 1em 1em;
 }
-.interaction {
-    margin: 0 1em 1em 1em;
+
+pre a:link,
+pre a:visited {
+    color: #000;
+    text-decoration: none;
+    border-bottom: .1em solid #333;
+    font-weight: bold;
 }
+pre .caret {
+    font-weight: bold;
+    color: #999;
+}
+pre .string {
+    color: #0086D2;
+    font-weight: bold;
+}
+pre .integer {
+    color: #0086D2;
+    font-weight: bold;
+}
+pre .double {
+    color: #A640D2;
+    font-weight: bold;
+}
+pre .particle {
+    color: #56B200;
+    font-weight: bold;
+}
+pre .internal {
+    font-style: italic;
+    color: #333;
+}
+
