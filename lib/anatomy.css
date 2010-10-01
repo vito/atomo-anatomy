@@ -110,28 +110,32 @@ pre a:visited {
     border-bottom: .1em solid #333;
     font-weight: bold;
 }
-pre .caret {
+
+.caret {
     font-weight: bold;
     color: #999;
 }
-pre .string {
+.string {
     color: #0086D2;
     font-weight: bold;
 }
-pre .integer {
+.integer {
     color: #0086D2;
     font-weight: bold;
 }
-pre .double {
+.char {
+    color: #D20086;
+    font-weight: bold;
+}
+.double {
     color: #A640D2;
     font-weight: bold;
 }
-pre .particle {
+.particle {
     color: #56B200;
     font-weight: bold;
 }
-pre .internal {
+.internal {
     font-style: italic;
     color: #333;
 }
-
