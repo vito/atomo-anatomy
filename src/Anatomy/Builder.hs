@@ -346,9 +346,9 @@ runAVM' :: AVM a -> Section -> VM a
 runAVM' = evalStateT
 
 runA :: AVM Value -> Section -> IO (Either AtomoError Value)
-runA a s = evalStateT (runContT (runErrorT go') return) startEnv
+runA a s = run go'
   where
-    go' = catchError (initEnv >> initA >> evalStateT a s) $ \e -> do
+    go' = catchError (initA >> evalStateT a s) $ \e -> do
         printError e
         throwError e
 
