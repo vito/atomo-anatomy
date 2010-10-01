@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, TypeSynonymInstances #-}
 module Anatomy.Types where
 
-import Control.Monad.Trans.State
+import "monads-fd" Control.Monad.State
 import Data.IORef
 import Data.Typeable
 

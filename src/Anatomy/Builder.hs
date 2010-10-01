@@ -4,6 +4,7 @@ module Anatomy.Builder where
 import Data.Char
 import Data.Dynamic
 import Data.IORef
+import "monads-fd" Control.Monad.State (evalStateT)
 import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup
@@ -62,7 +63,7 @@ scan d n p ss' = do
                     }) ss
             Left e -> error $ "error including section: " ++ show e
       where
-        findFile [] fn = throwError (ErrorMsg ("file not found: " ++ fn))
+        findFile [] fn = throwError (FileNotFound fn)
         findFile (p:ps) fn = do
             check <- liftIO . doesFileExist $ p </> fn
 
@@ -246,18 +247,20 @@ buildFile fn o = do
     case p of
         Right ast -> do
             sec <- newSection $ \s -> s { sectionPath = path }
-            estart <- runA (lift $ scan 0 1 path ast) sec
+            estart <- runA (fmap (Haskell . toDyn) $ lift $ scan 0 1 path ast) sec
 
             putStrLn "scanned document"
 
-            flip (either (print . pretty)) estart $ \start -> do
+            flip (either (print . pretty)) estart $ \(Haskell start) -> do
                 putStrLn "building document"
 
-                runA (buildDocument o) start
+                runA (buildDocument o)
+                    (fromDyn start (error "runA did not return a Section"))
+
                 return ()
         Left e -> print e
 
-buildDocument :: FilePath -> AVM ()
+buildDocument :: FilePath -> AVM Value
 buildDocument o = do
     liftIO (putStrLn ("building document to: " ++ o))
 
@@ -294,6 +297,8 @@ buildDocument o = do
 
     liftIO . writeFile (o </> fn) $
         format toc title body parent
+
+    return (particle "done")
   where
     format toc t b mp = unlines
         [ "<!DOCTYPE html>"
@@ -329,7 +334,7 @@ getAObject = do
     lift . newObject $ \o -> o
         { oDelegates = oDelegates o ++ [a]
         , oMethods = 
-            ( addMethod (Slot (psingle "state" PSelf) (Haskell (toDyn s))) IM.empty
+            ( addMethod (Slot (psingle "state" PThis) (Haskell (toDyn s))) IM.empty
             , IM.empty
             )
         }
@@ -340,8 +345,12 @@ runAVM a s = lift (evalStateT a s)
 runAVM' :: AVM a -> Section -> VM a
 runAVM' = evalStateT
 
-runA :: AVM a -> Section -> IO (Either AtomoError a)
-runA a s = evalStateT (runErrorT ((initEnv >> initA >> evalStateT a s) `catchError` (\e -> printError e >> throwError e))) startEnv
+runA :: AVM Value -> Section -> IO (Either AtomoError Value)
+runA a s = evalStateT (runContT (runErrorT go') return) startEnv
+  where
+    go' = catchError (initEnv >> initA >> evalStateT a s) $ \e -> do
+        printError e
+        throwError e
 
 newSection :: (Section -> Section) -> IO Section
 newSection f = do
@@ -386,7 +395,7 @@ initA = do
                 throwError (ParseError e)
         
     [$p|(a: A) url-for: (e: Expression)|] =: do
-        Expression ae <- here "e" >>= findValue isExpression
+        Expression ae <- here "e" >>= findExpression
         Haskell a <- eval [$e|a state|]
 
         let st = fromDyn a (error "hotlink A is invalid") :: Section
