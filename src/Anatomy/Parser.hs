@@ -160,7 +160,7 @@ balancedBetween o c = try $ do
 
 
 continuedParser :: Parser a -> String -> String -> AT.VM a
-continuedParser p i s = do
+continuedParser p s i = do
     ps <- gets AT.parserState
     case runParser (do { r <- p; s <- getState; return (s, r) }) ps s i of
         Left e -> throwError (AT.ParseError e)
@@ -173,10 +173,10 @@ continuedParse :: String -> String -> AT.VM [Segment]
 continuedParse = continuedParser parser
 
 continuedParseFile :: FilePath -> AT.VM [Segment]
-continuedParseFile fn = liftIO (readFile fn) >>= flip continuedParse fn
+continuedParseFile fn = liftIO (readFile fn) >>= continuedParse fn
 
 parseDefinition :: String -> AT.VM Definition
 parseDefinition = continuedParser
     (do { r <- defParser; eof; return r })
-    "<inline>"
+    "<definition>"
 
