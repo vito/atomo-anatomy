@@ -20,8 +20,9 @@ special = '#'
 
 nested :: Parser [Segment]
 nested = do
+    os <- getState
     block <- balancedBetween '{' '}'
-    case runParser parser [] "<nested>" (cleanup block) of
+    case runParser parser os "<nested>" (cleanup block) of
         Left e -> fail ("nested: " ++ show e)
         Right ok -> return ok
   where
