@@ -48,20 +48,18 @@ scan d n p ss' = do
         cfn <- buildForString sfn
         fn <- findFile [sectionPath acc, ""] cfn
         liftIO (putStrLn ("including section: " ++ fn))
-        p <- liftIO (parseFile fn)
-        case p of
-            Right ast -> do
-                sec <- fmap (\s -> s { sectionParent = Just (sectionID acc) }) $
-                    scan (d + 1) (length (subSections acc) + 1) (takeDirectory fn) ast
 
-                liftIO (writeIORef (sectionID sec) sec)
+        ast <- continuedParseFile fn
+        sec <- fmap (\s -> s { sectionParent = Just (sectionID acc) }) $
+            scan (d + 1) (length (subSections acc) + 1) (takeDirectory fn) ast
 
-                scan' (acc
-                    { sectionBody = sectionBody acc ++
-                        [SectionReference (length (subSections acc))]
-                    , subSections = subSections acc ++ [sec]
-                    }) ss
-            Left e -> error $ "error including section: " ++ show e
+        liftIO (writeIORef (sectionID sec) sec)
+
+        scan' (acc
+            { sectionBody = sectionBody acc ++
+                [SectionReference (length (subSections acc))]
+            , subSections = subSections acc ++ [sec]
+            }) ss
       where
         findFile [] fn = throwError (FileNotFound fn)
         findFile (p:ps) fn = do
@@ -95,26 +93,20 @@ scan d n p ss' = do
         liftIO (putStrLn "definition")
         body <- buildForString sb
 
-        case parseDefinition body of
-            Right def ->
-                scan' (acc
-                    { sectionBody = sectionBody acc ++ [InlineDefinition def Nothing]
-                    , sectionBindings = defKey def : sectionBindings acc
-                    }) ss
-            Left e ->
-                error $ "error parsing definition: " ++ show e ++ "\ndefinition:\n" ++ body
+        def <- parseDefinition body
+        scan' (acc
+            { sectionBody = sectionBody acc ++ [InlineDefinition def Nothing]
+            , sectionBindings = defKey def : sectionBindings acc
+            }) ss
     scan' acc (KeywordDispatch ["define", "body"] [sd, sb]:ss) = do
         liftIO (putStrLn "definition with body")
 
         body <- buildForString sd
-        case parseDefinition body of
-            Right def ->
-                scan' (acc
-                    { sectionBody = sectionBody acc ++ [InlineDefinition def (Just sb)]
-                    , sectionBindings = defKey def : sectionBindings acc
-                    }) ss
-            Left e ->
-                error $ "error parsing definition: " ++ show e ++ "\ndefinition:\n" ++ body
+        def <- parseDefinition body
+        scan' (acc
+            { sectionBody = sectionBody acc ++ [InlineDefinition def (Just sb)]
+            , sectionBindings = defKey def : sectionBindings acc
+            }) ss
     scan' acc (SingleDispatch "table-of-contents":ss) = do
         liftIO (putStrLn "table of contents")
 
@@ -383,16 +375,10 @@ initA = do
         path <- fmap takeDirectory . liftIO $ canonicalizePath fn
         
         liftIO (putStrLn ("path: " ++ path))
-        parse <- liftIO (parseFile fn)
-        case parse of
-            Right ast -> do
-                liftIO (putStrLn "parse ok!")
-                sec <- scan 0 1 path ast
-                [$p|a state|] =:: Haskell (toDyn sec)
-                here "a"
-            Left e -> do
-                liftIO (putStrLn "parse failed!")
-                throwError (ParseError e)
+        ast <- continuedParseFile fn
+        sec <- scan 0 1 path ast
+        [$p|a state|] =:: Haskell (toDyn sec)
+        here "a"
         
     [$p|(a: A) url-for: (e: Expression)|] =: do
         Expression ae <- here "e" >>= findExpression

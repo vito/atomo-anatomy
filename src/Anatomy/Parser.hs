@@ -1,5 +1,7 @@
-module Anatomy.Parser (parse, parseFile, parseDefinition) where
+module Anatomy.Parser (parse, parseFile, parseDefinition, continuedParse, continuedParseFile) where
 
+import "monads-fd" Control.Monad.Error
+import "monads-fd" Control.Monad.State
 import Data.Char (isSpace)
 import Data.Hashable (hash)
 import Data.List (intercalate)
@@ -106,9 +108,6 @@ parse = runParser (do { r <- parser; eof; return r }) [] "<input>"
 parseFile :: String -> IO (Either ParseError [Segment])
 parseFile fn = fmap (runParser (do { r <- parser; eof; return r }) [] fn) (readFile fn)
 
-parseDefinition :: String -> Either ParseError Definition
-parseDefinition = runParser (do { r <- defParser; eof; return r }) [] "<input>"
-
 defParser :: Parser Definition
 defParser = do
     thumb <- try (fmap toDispatch (try AP.pSet <|> AP.pDefine)) <|> AP.pDispatch
@@ -158,4 +157,26 @@ balancedBetween o c = try $ do
         ]
     char c
     return $ concat raw
+
+
+continuedParser :: Parser a -> String -> String -> AT.VM a
+continuedParser p i s = do
+    ps <- gets AT.parserState
+    case runParser (do { r <- p; s <- getState; return (s, r) }) ps s i of
+        Left e -> throwError (AT.ParseError e)
+        Right (ps', es) -> do
+            modify $ \e -> e { AT.parserState = ps' }
+            return es
+
+-- | parse input i from source s, maintaining parser state between parses
+continuedParse :: String -> String -> AT.VM [Segment]
+continuedParse = continuedParser parser
+
+continuedParseFile :: FilePath -> AT.VM [Segment]
+continuedParseFile fn = liftIO (readFile fn) >>= flip continuedParse fn
+
+parseDefinition :: String -> AT.VM Definition
+parseDefinition = continuedParser
+    (do { r <- defParser; eof; return r })
+    "<inline>"
 
