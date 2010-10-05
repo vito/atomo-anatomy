@@ -56,6 +56,10 @@ p {
     padding-bottom: 1em;
 }
 
+dd {
+    margin: 0 0 1em 2em;
+}
+
 #sidebar {
     background: #f0f0f0;
     padding: 1em;
@@ -107,13 +111,28 @@ pre a:link,
 pre a:visited {
     color: #000;
     text-decoration: none;
-    border-bottom: .1em solid #333;
+    border-bottom: .1em solid #ddd;
     font-weight: bold;
 }
+pre a:hover {
+    border-bottom-color: #333;
+}
 
-.caret {
+.interaction .error:before {
+    content: "error: ";
+}
+.interaction .error {
+    font-style: italic;
+    color: red;
+}
+.interaction .caret {
     font-weight: bold;
     color: #999;
+}
+
+.list {
+    color: #000;
+    font-weight: normal;
 }
 .string {
     color: #0086D2;
@@ -138,4 +157,14 @@ pre a:visited {
 .internal {
     font-style: italic;
     color: #333;
+}
+.dispatch.single {
+    font-style: italic;
+    color: #000;
+    font-weight: normal;
+}
+a > .dispatch.single {
+    font-style: normal;
+    color: inherit;
+    font-weight: inherit;
 }
