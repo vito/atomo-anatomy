@@ -7,25 +7,29 @@ value-output? = Parameter new: False
 A bold: s := s in-tag: "strong"
 A italic: s := s in-tag: "em"
 
+A list: s := s in-tag: "ul"
+A numbered-list: s := s in-tag: "ol"
+
+A item: s := s in-tag: "li"
+
+A definitions: s := s in-tag: "dl"
+A item: s is: v := (s in-tag: "dt") .. (v in-tag: "dd")
+
 (a: A) atomo: (e: Expression) :=
     "<code>" .. (a pretty: e) .. "</code>"
 
-(a: A) atomo-block: (e: Expression) :=
+(a: A) atomo-line: (e: Expression) :=
     "<pre class=\"verbatim\">" .. (a pretty: e) .. "</pre>"
 
-(s: String) operator? :=
-    s all?: { c | "~!@#$%^&*-_=+./\\|<>?:" contains?: c }
+(a: A) atomo-segment: (e: Expression) :=
+    "<pre class=\"verbatim\">" .. e evaluate contents (map: { c | a pretty: c }) (join: "\n") .. "</pre>"
 
-(s: String) type: (c: String) :=
-    "<span class=\"" .. c .. "\">" .. s .. "</span>"
+(a: A) example-segment: (e: Expression) :=
+    "<div class=\"example\"><em>Example:</em>" .. (a atomo-segment: e) .. "</div>"
 
-(s: String) escape :=
-    s match: {
-        "" -> ""
-        '<' . ss -> "&lt;" .. ss escape
-        '>' . ss -> "&gt;" .. ss escape
-        '&' . ss -> "&amp;" .. ss escape
-        s . ss -> s . ss escape
+(a: A) atomo-block: (e: Expression) :=
+    with: multiline-pretty? as: True do: {
+        a atomo-line: e
     }
 
 A pretty: o := {
@@ -69,6 +73,9 @@ pretty-particle = { a p |
             ("@(" .. initial .. ks (join: " ") .. ")") type: "particle"
         }
 }
+
+(a: A) pretty: (as: Association) :=
+    (a pretty: as from) .. " -> " escape .. (a pretty: as to)
 
 (a: A) pretty: (p: Particle) :=
     p type match: {
@@ -154,9 +161,9 @@ pretty-particle = { a p |
                                 ks join: " "
                             }
 
-                    if: (c == @single || c == @keyword)
+                    (if: (c == @single || c == @keyword)
                         then: { "(" .. initial .. rest .. ")" }
-                        else: { initial .. rest }
+                        else: { initial .. rest }) type: "dispatch keyword"
                 } call
             }
         }
@@ -208,29 +215,26 @@ pretty-particle = { a p |
         else: { pretty }
 } call
 
-(s: String) keywordfy :=
-    if: s operator?
-        then: { s }
-        else: { s .. ":" }
-
-get-fake-output := File read: "fake-output"
-
 (a: A) interaction: (e: Expression) :=
     a interaction: e evaluate on: Object clone
 (a: A) interaction: (b: Block) :=
     a interaction: b on: Object clone
 
 (a: A) interaction: (e: Expression) on: (t: Expression) :=
-    a interaction: e evaluate on: (dispatch sender join: (Block new: [t]))
+    a interaction: e evaluate on: (t evaluate-in: dispatch sender)
 (a: A) interaction: (b: Block) on: env := {
     "interaction" print
     b print
     log =  b contents (map: { e |
         {
-            res = with: value-output? as: True do: {
-                with-all-output-to: "fake-output" do: {
-                    a pretty: (env join: (Block new: [e]))
+            res = {
+                with: value-output? as: True do: {
+                    with-all-output-to: "fake-output" do: {
+                        a pretty: (env join: (Block new: [e]))
+                    }
                 }
+            } catch: { e |
+                (a pretty: e) type: "error"
             }
 
             "&gt;" (type: "caret") .. " " .. (a pretty: e) .. "\n" .. get-fake-output .. res .. "\n"
@@ -258,3 +262,26 @@ A code: (s: String) := s escape in-tag: "code"
 
 (e: Expression) in-tag: t := e evaluate (as: String) in-tag: t
 (s: String) in-tag: t := "<" .. t .. ">" .. s .. "</" .. t .. ">"
+
+(s: String) operator? :=
+    s all?: { c | "~!@#$%^&*-_=+./\\|<>?:" contains?: c }
+
+(s: String) type: (c: String) :=
+    "<span class=\"" .. c .. "\">" .. s .. "</span>"
+
+(s: String) escape :=
+    s match: {
+        "" -> ""
+        '<' . ss -> "&lt;" .. ss escape
+        '>' . ss -> "&gt;" .. ss escape
+        '&' . ss -> "&amp;" .. ss escape
+        s . ss -> s . ss escape
+    }
+
+(s: String) keywordfy :=
+    if: s operator?
+        then: { s }
+        else: { s .. ":" }
+
+get-fake-output := File (read: "fake-output") escape
+
