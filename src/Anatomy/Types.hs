@@ -61,7 +61,7 @@ data Segment
     = Chunk String
     | KeywordDispatch [String] [Segment]
     | SingleDispatch String
-    | The AT.Expr
+    | Atomo AT.Expr
     | Nested [Segment]
     | SectionReference Int
     | TableOfContents

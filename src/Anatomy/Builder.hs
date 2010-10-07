@@ -119,7 +119,7 @@ scan d n p ss' = do
 
 
 buildForString :: Segment -> VM String
-buildForString (The e) = fmap fromString (eval e)
+buildForString (Atomo e) = fmap fromString (eval e)
 buildForString (Chunk s) = return s -- TODO: escaping
 buildForString (Nested ns) = fmap concat (mapM buildForString ns)
 buildForString x = error $ "cannot be built into a string: " ++ show x
@@ -136,7 +136,7 @@ build s = do
     build' (KeywordDispatch ns ss) = do
         vs <- forM ss $ \s ->
             case s of
-                The e -> return (Expression e)
+                Atomo e -> return (Expression e)
                 _ -> fmap string (build s)
 
         a <- getAObject
@@ -145,9 +145,9 @@ build s = do
         s <- getAObject
         res <- lift (dispatch (single n s))
         return (fromString res)
-    build' (The e@(Set {})) = lift (eval e) >> return ""
-    build' (The e@(Define {})) = lift (eval e) >> return ""
-    build' (The e) = lift (eval e >>= prettyVM >>= return . show)
+    build' (Atomo e@(Set {})) = lift (eval e) >> return ""
+    build' (Atomo e@(Define {})) = lift (eval e) >> return ""
+    build' (Atomo e) = lift (eval e >>= prettyVM >>= return . show)
     build' (Nested ss) = fmap concat $ mapM build ss
     build' (SectionReference n) = do
         style <- gets sectionStyle
@@ -514,7 +514,7 @@ sanitize (s:ss)
     | otherwise = '_' : sanitize ss
 
 buildForString' :: Segment -> AVM String
-buildForString' (The e) = lift (fmap fromString (eval e))
+buildForString' (Atomo e) = lift (fmap fromString (eval e))
 buildForString' x = build x
 
 trimFragment :: String -> String

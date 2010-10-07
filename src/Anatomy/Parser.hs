@@ -50,7 +50,7 @@ keyword = fmap (debug "keyword") $ do
         char ':'
         val <- choice
             [ fmap Nested nested
-            , try $ fmap The . choice $
+            , try $ fmap Atomo . choice $
                 -- literal value
                 [ unlexeme AP.pLiteral
 
@@ -59,11 +59,11 @@ keyword = fmap (debug "keyword") $ do
                 ]
 
             -- operator reference
-            , try $ fmap (\x -> The $ AT.Dispatch Nothing (AT.EKeyword (hash [x]) [x] [AT.ETop Nothing, AT.ETop Nothing])) $
+            , try $ fmap (\x -> Atomo $ AT.Dispatch Nothing (AT.EKeyword (hash [x]) [x] [AT.ETop Nothing, AT.ETop Nothing])) $
                 between (char '(') (char ')') (many1 (oneOf (':':AB.opLetters)))
 
             -- keyword reference
-            , try $ fmap (\ks -> The $ AT.Dispatch Nothing (AT.EKeyword (hash ks) ks (replicate (length ks + 1) (AT.ETop Nothing)))) $
+            , try $ fmap (\ks -> Atomo $ AT.Dispatch Nothing (AT.EKeyword (hash ks) ks (replicate (length ks + 1) (AT.ETop Nothing)))) $
                 between (char '(') (char ')') (many1 (AB.identifier >>= \n -> char ':' >> return n))
 
             -- single reference; trailing punctuation is ignored
@@ -75,7 +75,7 @@ keyword = fmap (debug "keyword") $ do
                 
                 getInput >>= setInput . (punct ++)
 
-                return . The . AT.Dispatch Nothing $ AT.ESingle (hash sane) sane (AT.ETop Nothing)
+                return . Atomo . AT.Dispatch Nothing $ AT.ESingle (hash sane) sane (AT.ETop Nothing)
             ]
         return (name, val)
 
@@ -93,7 +93,7 @@ single = fmap (debug "single") $ do
 the :: Parser Segment
 the = fmap (debug "the") $ do
     char special
-    fmap The (between (char '(') (char ')') AP.pExpr)
+    fmap Atomo (between (char '(') (char ')') AP.pExpr)
 
 parser :: Parser [Segment]
 parser = many $ choice
