@@ -163,8 +163,11 @@ pre a:hover {
     color: #000;
     font-weight: normal;
 }
-a > .dispatch.single {
+.dispatch.single > a {
     font-style: normal;
-    color: inherit;
-    font-weight: inherit;
+}
+pre .dispatch.single > a {
+    font-style: normal;
+    color: #000;
+    font-weight: bold;
 }
