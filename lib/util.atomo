@@ -1,0 +1,22 @@
+(e: Expression) in-tag: t := e evaluate (as: String) in-tag: t
+(s: String) in-tag: t := "<" .. t .. ">" .. s .. "</" .. t words head .. ">"
+
+(s: String) operator? :=
+  s all?: { c | "~!@#$%^&*-_=+./\\|<>?:" contains?: c }
+
+(s: String) type: (c: String) :=
+  s in-tag: ("span class=\"" .. c .. "\"")
+
+(s: String) escape :=
+  s match: {
+    "" -> ""
+    '<' . ss -> "&lt;" .. ss escape
+    '>' . ss -> "&gt;" .. ss escape
+    '&' . ss -> "&amp;" .. ss escape
+    s . ss -> s . ss escape
+  }
+
+(s: String) keywordfy :=
+  if: s operator?
+    then: { s }
+    else: { s .. ":" }

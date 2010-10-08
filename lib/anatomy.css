@@ -166,8 +166,10 @@ pre a:hover {
 .dispatch.single > a {
     font-style: normal;
 }
-pre .dispatch.single > a {
+pre .dispatch.single {
     font-style: normal;
+}
+pre .dispatch.single > a {
     color: #000;
     font-weight: bold;
 }

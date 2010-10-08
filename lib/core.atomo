@@ -1,319 +1,90 @@
-indent-level = Parameter new: 0
-multiline-pretty? = Parameter new: False
-docs-root = Parameter new: ""
-value-output? = Parameter new: False
-context = Parameter new: @top
+require: "pretty.atomo"
+require: "util.atomo"
 
-indented: (s: String) :=
-    (' ' repeat: (indent-level _? * 2)) .. s
-
-unindent :=
-    "\n" .. (' ' repeat: ((indent-level _? - 1) * 2))
-
+-- various semantic helpers
 A bold: s := s in-tag: "strong"
 A italic: s := s in-tag: "em"
-
+A code: (s: String) := s escape in-tag: "code"
 A list: s := s in-tag: "ul"
 A numbered-list: s := s in-tag: "ol"
-
 A item: s := s in-tag: "li"
-
 A definitions: s := s in-tag: "dl"
 A item: s is: v := (s in-tag: "dt") .. (v in-tag: "dd")
+A verbatim: (s: String) :=
+  s escape in-tag: "pre class=\"verbatim\""
 
-(a: A) atomo: (e: Expression) :=
-    (a pretty: e) in-tag: "code"
-
-(a: A) atomo-line: (e: Expression) :=
-    (a pretty: e) in-tag: "pre class=\"verbatim\""
-
-(a: A) atomo-segment: (e: Expression) :=
-    e evaluate contents (map: { c | a pretty: c }) (join: "\n")
-        in-tag: "pre class=\"verbatim\""
-
-(a: A) example-segment: (e: Expression) :=
-    ("<em>Example:</em>" .. (a atomo-segment: e))
-        in-tag: "div class=\"example\""
-
-(a: A) atomo-block: (e: Expression) :=
-    with: multiline-pretty? as: True do: {
-        a atomo-line: e
-    }
-
-(a: A) linked: (e: Expression) as: (t: String) :=
-    a (url-for: e) match: {
-        @none -> t escape
-        @(ok: u) ->
-            t escape in-tag: ("a href=\"" .. docs-root _? .. u .. "\"")
-    }
-
-A pretty: o := {
-    s = o show
-
-    if: (s starts-with?: "<")
-        then: { s escape type: "internal" }
-        else: { s escape }
-} call
-
-A pretty: (c: Char) := c show type: "char"
-A pretty: (d: Double) := d show type: "number double"
-A pretty: (i: Integer) := i show type: "number integer"
-A pretty: (c: String) := c show escape type: "string"
-
-A pretty: (p: Pattern) :=
-    if: value-output? _?
-        then: { p show escape type: "internal" }
-        else: {
-            p show (drop: "<pattern " length) init escape type: "pattern"
-        }
-
-(a: A) pretty: (as: Association) :=
-    (a pretty: as from) .. " -> " escape .. (a pretty: as to)
-
-(a: A) pretty: (p: Particle) :=
-    p type match: {
-        @single -> ("@" .. p name escape (type: "name")) type: "particle"
-        @keyword ->
-            a pretty-particle: p
-    }
-
-(a: A) pretty: (l: List) :=
-    ("[" .. l (map: { l | a pretty: l }) (join: ", ") .. "]") type: "list"
-
-(a: A) pretty: (b: Block) := with: [
-    context -> @top
-    value-output? -> False
-    indent-level -> indent-level _? + 1
-] do: {
-    arguments = b arguments (map: { p | a pretty: p }) (join: " ")
-
-    pretty-contents = b contents (map: { e | a pretty: e })
-
-    contents =
-        if: multiline-pretty? _?
-            then: {
-                exprs = pretty-contents (map: { c |
-                    "\n" .. (indented: c)
-                }) join
-
-                exprs .. unindent
-            }
-            else: { " " .. pretty-contents (join: "; ") .. " " }
-    
-    condition: {
-        contents strip empty? -> "{}" type: "block"
-
-        b arguments empty? ->
-            ("{" .. contents .. "}") type: "block"
-
-        otherwise ->
-            ("{ " .. arguments .. " |" .. contents .. "}") type: "block"
-    }
-}
-
-(a: A) pretty: (e: Expression) := {
-    pretty = e type match: {
-        @dispatch -> with: value-output? as: False do: {
-            a pretty-dispatch: e type: e dispatch-type
-        }
-
-        @define -> with: value-output? as: False do: {
-            pat = a pretty: e pattern
-
-            if: multiline-pretty? _?
-                then: {
-                    with: [
-                        indent-level -> indent-level _? + 1
-                        context -> @define
-                    ] do: {
-                        expr = a pretty: e expression
-                        pat .. " :=\n" .. (indented: expr) .. "\n"
-                    }
-                }
-                else: {
-                    with: context as: @define do: {
-                        expr = a pretty: e expression
-                        pat .. " := " .. expr
-                    }
-                }
-        }
-
-        @set -> with: [
-            value-output? -> False
-            context -> @set
-        ] do: {
-            (a pretty: e pattern) .. " = " .. (a pretty: e expression)
-        }
-
-        @list -> with: context as: @list do: {
-            "[" .. e contents (map: { l | a pretty: l }) (join: ", ") .. "]"
-        }
-
-        @particle ->
-            e particle-type match: {
-                @single -> a pretty: e evaluate
-                @keyword -> a pretty-particle: e
-            }
-
-        @primitive -> a pretty: e evaluate
-
-        @block -> a pretty: e evaluate
-
-        @call -> "dispatch" type: "call"
-
-        x -> e show escape
-    }
-
-    if: value-output? _?
-        then: {
-            ("<expression " escape .. pretty .. ">" escape) type: "internal"
-        }
-        else: { pretty }
-} call
-
-(a: A) pretty-dispatch: e type: @single := with: context as: @single do: {
-    msg = (a linked: e as: e particle name) type: "dispatch single"
-
-    if: (e target type == @top)
-        then: { msg }
-        else: { (a pretty: e target) .. " " .. msg }
-}
-
-(a: A) pretty-dispatch: e type: @keyword := {
-    with: context as: @keyword do: {
-        initial =
-            if: (e targets head type == @top)
-                then: { "" }
-                else: { (a pretty: e targets head) .. " " }
-
-        rest =
-            if: e targets (map: @type) (all?: @(== @top))
-                then: {
-                    a linked: e as: e particle names (map: @keywordfy) join
-                }
-                else: {
-                    ks = (0 ... e particle names length) map: { n |
-                        name = e particle names (at: n)
-                        value = a pretty: e targets (at: (n + 1))
-
-                        (a linked: e as: name keywordfy) .. " " .. value
-                    }
-
-                    ks join: " "
-                }
-    } in-context
-
-    (if: (context _? == @single || context _? == @keyword)
-        then: { "(" .. initial .. rest .. ")" }
-        else: { initial .. rest }) type: "dispatch keyword"
-} call
-
-(a: A) pretty-particle: p :=
-    if: p values (all?: @(== @none))
-        then: {
-            ("@" ..
-                p names
-                    (map: { n | n keywordfy escape (type: "names") })
-                    join
-            ) type: "particle"
-        }
-        else: {
-            initial =
-                p values head match: {
-                    @none -> ""
-                    @(ok: v) -> a pretty: v
-                }
-
-            ks = (0 ... p names length) map: { n |
-                name = p names (at: n)
-                value =
-                    p values (at: (n + 1)) match: {
-                        @none -> "_"
-                        @(ok: v) -> a pretty: v
-                    }
-
-                name keywordfy escape (type: "names") .. " " .. value
-            }
-
-            ("@(" .. initial .. ks (join: " ") .. ")") type: "particle"
-        }
-
-(a: A) interaction: (e: Expression) :=
-    a interaction: e evaluate on: Object clone
-(a: A) interaction: (b: Block) :=
-    a interaction: b on: Object clone
-
-(a: A) interaction: (e: Expression) on: (t: Expression) :=
-    a interaction: e evaluate on: (t evaluate-in: dispatch sender)
-(a: A) interaction: (b: Block) on: env := {
-    ("interaction: " .. b show) print
-
-    log =  b contents (map: { e |
-        {
-            res = {
-                with: value-output? as: True do: {
-                    with-all-output-to: "fake-output" do: {
-                        a pretty: (env join: (Block new: [e]))
-                    }
-                }
-            } catch: { e |
-                (a pretty: e) type: "error"
-            }
-
-            [
-                "&gt;" type: "caret"
-                " "
-                a pretty: e
-                "\n"
-                get-fake-output
-                res
-                "\n"
-            ] join
-        } ensuring: {
-            when: File (exists?: "fake-output")
-                do: { File delete: "fake-output" }
-        }
-    }) join
-
-    log in-tag: "pre class=\"interaction\""
-} call
-
-(a: A) example: (e: Expression) :=
-    ("<em>Example:</em>" .. (a interaction: e))
-        in-tag: "div class=\"example\""
-
+-- external link
 (a: A) link: name to: (url: Expression) := a link: name to: url evaluate
 (a: A) link: (name: Expression) to: url := a link: name evaluate to: url
 A link: (name: String) to: (url: String) :=
-    name in-tag: ("a href=\"" .. url .. "\"")
+  name in-tag: ("a href=\"" .. url .. "\" class=\"external\"")
 
-A verbatim: (s: String) :=
-    s escape in-tag: "pre class=\"verbatim\""
+-- pretty-printing a single expr, inline
+(a: A) atomo: (e: Expression) :=
+  (a pretty: e) in-tag: "code"
 
-A code: (s: String) := s escape in-tag: "code"
+-- pretty-printing a single expr, block
+(a: A) atomo-line: (e: Expression) :=
+  (a pretty: e) in-tag: "pre class=\"verbatim\""
 
-(e: Expression) in-tag: t := e evaluate (as: String) in-tag: t
-(s: String) in-tag: t := "<" .. t .. ">" .. s .. "</" .. t words head .. ">"
+-- pretty-print a block of expressions
+(a: A) atomo-segment: (e: Expression) :=
+  e evaluate contents (map: { c | a pretty: c }) (join: "\n")
+    in-tag: "pre class=\"verbatim\""
 
-(s: String) operator? :=
-    s all?: { c | "~!@#$%^&*-_=+./\\|<>?:" contains?: c }
+-- example code (unevaluated)
+(a: A) example-segment: (e: Expression) :=
+  ("<em>Example:</em>" .. (a atomo-segment: e))
+    in-tag: "div class=\"example\""
 
-(s: String) type: (c: String) :=
-    s in-tag: ("span class=\"" .. c .. "\"")
+-- pretty-print a block of Atomo code, multiline
+(a: A) atomo-block: (e: Expression) :=
+  with: multiline-pretty? as: True do: {
+    a atomo-line: e
+  }
 
-(s: String) escape :=
-    s match: {
-        "" -> ""
-        '<' . ss -> "&lt;" .. ss escape
-        '>' . ss -> "&gt;" .. ss escape
-        '&' . ss -> "&amp;" .. ss escape
-        s . ss -> s . ss escape
-    }
+-- example interaction session
+(a: A) example: (e: Expression) :=
+  ("<em>Example:</em>" .. (a interaction: e))
+    in-tag: "div class=\"example\""
 
-(s: String) keywordfy :=
-    if: s operator?
-        then: { s }
-        else: { s .. ":" }
+-- a REPL simulator
+(a: A) interaction: (e: Expression) :=
+  a interaction: e evaluate on: Object clone
+(a: A) interaction: (b: Block) :=
+  a interaction: b on: Object clone
 
-get-fake-output := File (read: "fake-output") escape
+-- a REPL simulator locked into an environment
+(a: A) interaction: (e: Expression) on: (t: Expression) :=
+  a interaction: e evaluate on: (t evaluate-in: dispatch sender)
+(a: A) interaction: (b: Block) on: env :=
+  { ("interaction: " .. b show) print
 
+    log =  b contents (map: { e |
+      { res = {
+          with: value-output? as: True do: {
+            with-all-output-to: "fake-output" do: {
+              a pretty: (env join: (Block new: [e]))
+            }
+          }
+        } catch: { e |
+          (a pretty: e) type: "error"
+        }
+
+        [
+          "&gt;" type: "caret"
+          " "
+          a pretty: e
+          "\n"
+          File (read: "fake-output") escape
+          res
+          "\n"
+        ] join
+      } ensuring: {
+        when: File (exists?: "fake-output")
+          do: { File delete: "fake-output" }
+      }
+    }) join
+
+    log in-tag: "pre class=\"interaction\""
+  } call

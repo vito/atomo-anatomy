@@ -12,7 +12,7 @@ build-type:          Simple
 cabal-version:       >= 1.2
 
 data-files:          lib/anatomy.css
-                     lib/core.atomo
+                     lib/*.atomo
 
 
 library
@@ -69,6 +69,6 @@ executable anatomy
     parsec >= 3.0.0,
     pretty,
     pretty-show,
-    tagsoup,
+    tagsoup >= 0.12,
     time,
     vector
