@@ -2,7 +2,7 @@
 (s: String) in-tag: t := "<" .. t .. ">" .. s .. "</" .. t words head .. ">"
 
 (s: String) operator? :=
-  s all?: { c | "~!@#$%^&*-_=+./\\|<>?:" contains?: c }
+  s head in?: "~!@#$%^&*-_=+./\\|<>?:"
 
 (s: String) type: (c: String) :=
   s in-tag: ("span class=\"" .. c .. "\"")
