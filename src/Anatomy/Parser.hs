@@ -1,7 +1,8 @@
 module Anatomy.Parser (parse, parseFile, parseDefinition, continuedParse, continuedParseFile) where
 
-import "monads-fd" Control.Monad.Error
-import "monads-fd" Control.Monad.State
+import Control.Monad.Error
+import Control.Monad.Identity
+import Control.Monad.State
 import Data.Char (isSpace)
 import Data.Hashable (hash)
 import Data.List (intercalate)
@@ -22,7 +23,7 @@ nested :: Parser [Segment]
 nested = do
     os <- getState
     block <- balancedBetween '{' '}'
-    case runParser parser os "<nested>" (cleanup block) of
+    case runIdentity $ runParserT parser os "<nested>" (cleanup block) of
         Left e -> fail ("nested: " ++ show e)
         Right ok -> return ok
   where
@@ -104,10 +105,10 @@ parser = many $ choice
     ]
 
 parse :: String -> Either ParseError [Segment]
-parse = runParser (do { r <- parser; eof; return r }) [] "<input>"
+parse = runIdentity . runParserT (do { r <- parser; eof; return r }) [] "<input>"
 
 parseFile :: String -> IO (Either ParseError [Segment])
-parseFile fn = fmap (runParser (do { r <- parser; eof; return r }) [] fn) (readFile fn)
+parseFile fn = fmap (runIdentity . runParserT (do { r <- parser; eof; return r }) [] fn) (readFile fn)
 
 defParser :: Parser Definition
 defParser = do
@@ -163,7 +164,7 @@ balancedBetween o c = try $ do
 continuedParser :: Parser a -> String -> String -> AT.VM a
 continuedParser p s i = do
     ps <- gets AT.parserState
-    case runParser (do { r <- p; s <- getState; return (s, r) }) ps s i of
+    case runIdentity $ runParserT (do { r <- p; s <- getState; return (s, r) }) ps s i of
         Left e -> throwError (AT.ParseError e)
         Right (ps', es) -> do
             modify $ \e -> e { AT.parserState = ps' }

@@ -1,10 +1,10 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Anatomy.Builder where
 
+import Control.Monad.State (evalStateT)
 import Data.Char
 import Data.Dynamic
 import Data.IORef
-import "monads-fd" Control.Monad.State (evalStateT)
 import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup

@@ -18,8 +18,6 @@ data-files:          lib/anatomy.css
 library
   hs-source-dirs:    src
 
-  extensions:        PackageImports
-
   build-depends:
     atomo,
     base >= 4,
@@ -29,7 +27,6 @@ library
     hashable,
     haskeline,
     monads-fd,
-    mtl,
     parsec >= 3.0.0,
     pretty,
     pretty-show,
@@ -53,9 +50,6 @@ executable anatomy
   ghc-prof-options:   -prof -auto-all -caf-all
   ghc-options:        -O2 -Wall -threaded -fno-warn-unused-do-bind
 
-  extensions:        PackageImports
-
-  -- Packages needed in order to build this package.
   build-depends:
     atomo,
     base >= 4,
@@ -65,7 +59,6 @@ executable anatomy
     hashable,
     haskeline,
     monads-fd,
-    mtl,
     parsec >= 3.0.0,
     pretty,
     pretty-show,
