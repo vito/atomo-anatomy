@@ -65,6 +65,7 @@ dd {
     padding: 1em;
     width: 16em;
     height: 100%;
+    overflow: auto;
     position: fixed;
     right: 0;
     top: 0;
