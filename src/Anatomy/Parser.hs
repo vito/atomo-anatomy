@@ -22,8 +22,9 @@ special = '#'
 nested :: Parser [Segment]
 nested = do
     os <- getState
+    pos <- getPosition
     block <- balancedBetween '{' '}'
-    case runIdentity $ runParserT parser os "<nested>" (cleanup block) of
+    case runIdentity $ runParserT parser os (show pos) (cleanup block) of
         Left e -> fail ("nested: " ++ show e)
         Right ok -> return ok
   where

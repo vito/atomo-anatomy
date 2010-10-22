@@ -79,6 +79,7 @@ defKey d =
     case defThumb d of
         AT.Dispatch { AT.eMessage = AT.EKeyword { AT.emNames = ns } } -> KeywordKey ns
         AT.Dispatch { AT.eMessage = AT.ESingle { AT.emName = n } } -> SingleKey n
+        _ -> error $ "no defKey for: " ++ show (defThumb d)
 
 bindingID :: BindingKey -> String
 bindingID (KeywordKey ns) = "definition_" ++ concatMap (++ ":") ns

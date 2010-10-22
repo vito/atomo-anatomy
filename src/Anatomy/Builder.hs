@@ -15,11 +15,9 @@ import Anatomy.AutoFlow
 import Anatomy.Parser
 import Anatomy.Types
 
-import Atomo.Environment
-import Atomo.Haskell
+import Atomo
 import Atomo.Method
 import Atomo.Pretty
-import Atomo.Types
 
 import Paths_anatomy
 
@@ -119,7 +117,7 @@ scan d n p ss' = do
 
 
 buildForString :: Segment -> VM String
-buildForString (Atomo e) = fmap fromString (eval e)
+buildForString (Atomo e) = liftM (fromText . fromString) (eval e)
 buildForString (Chunk s) = return s -- TODO: escaping
 buildForString (Nested ns) = fmap concat (mapM buildForString ns)
 buildForString x = error $ "cannot be built into a string: " ++ show x
@@ -140,11 +138,11 @@ build s = do
                 _ -> fmap string (build s)
 
         a <- getAObject
-        fmap fromString $ lift (dispatch (keyword ns (a:vs)))
+        liftM (fromText . fromString) $ lift (dispatch (keyword ns (a:vs)))
     build' (SingleDispatch n) = do
         s <- getAObject
         res <- lift (dispatch (single n s))
-        return (fromString res)
+        return (fromText $ fromString res)
     build' (Atomo e@(Set {})) = lift (eval e) >> return ""
     build' (Atomo e@(Define {})) = lift (eval e) >> return ""
     build' (Atomo e) = lift (eval e >>= prettyVM >>= return . show)
@@ -186,9 +184,9 @@ build s = do
         get >>= buildTOC >>= return . printFullTOC
     build' (InlineDefinition d b) = do
         a <- getAObject
-        thumb <- fmap fromString . lift $ dispatch (keyword ["pretty"] [a, Expression (defThumb d)])
-        pr <- fmap fromString . lift $ dispatch (keyword ["pretty"] [a, Expression (defReturn d)])
-        pcs <- lift $ mapM (\c -> fmap fromString $ dispatch (keyword ["pretty"] [a, Expression c])) (defContracts d)
+        thumb <- liftM (fromText . fromString) . lift $ dispatch (keyword ["pretty"] [a, Expression (defThumb d)])
+        pr <- liftM (fromText . fromString) . lift $ dispatch (keyword ["pretty"] [a, Expression (defReturn d)])
+        pcs <- lift $ mapM (\c -> liftM (fromText . fromString) $ dispatch (keyword ["pretty"] [a, Expression c])) (defContracts d)
         body <- maybe (return "") (fmap (++ "\n\n") . build) b
         return . unlines $
             [ "<div class=\"definition\" id=\"" ++ bindingID (defKey d) ++ "\">"
@@ -514,7 +512,7 @@ sanitize (s:ss)
     | otherwise = '_' : sanitize ss
 
 buildForString' :: Segment -> AVM String
-buildForString' (Atomo e) = lift (fmap fromString (eval e))
+buildForString' (Atomo e) = lift (liftM (fromText . fromString) (eval e))
 buildForString' x = build x
 
 trimFragment :: String -> String
