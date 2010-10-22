@@ -139,6 +139,9 @@ pre a:hover {
     color: #0086D2;
     font-weight: bold;
 }
+.boolean {
+    font-weight: bold;
+}
 .integer {
     color: #0086D2;
     font-weight: bold;
@@ -149,6 +152,10 @@ pre a:hover {
 }
 .double {
     color: #A640D2;
+    font-weight: bold;
+}
+.rational {
+    color: #26C052;
     font-weight: bold;
 }
 .particle {

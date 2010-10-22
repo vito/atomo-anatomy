@@ -34,8 +34,10 @@ A pretty: o :=
 
 -- primitive pretty-printers
 A pretty: (c: Char) := c show type: "char"
+A pretty: (b: Boolean) := b show type: "boolean"
 A pretty: (d: Double) := d show type: "number double"
 A pretty: (i: Integer) := i show type: "number integer"
+A pretty: (r: Rational) := r show type: "number rational"
 A pretty: (c: String) := c show escape type: "string"
 
 -- pattern pretty-printing; lop off "<pattern [...]>" normally
