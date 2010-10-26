@@ -56,7 +56,7 @@ A link: (name: String) to: (url: String) :=
 
 -- a REPL simulator locked into an environment
 (a: A) interaction: (e: Expression) on: (t: Expression) :=
-  a interaction: e evaluate on: (t evaluate-in: dispatch sender)
+  a interaction: e evaluate on: (t evaluate-in: sender)
 (a: A) interaction: (b: Block) on: env :=
   { ("interaction: " .. b show) print
 
@@ -64,7 +64,7 @@ A link: (name: String) to: (url: String) :=
       { res = {
           with: value-output? as: True do: {
             with-all-output-to: "fake-output" do: {
-              a pretty: (env join: (Block new: [e]))
+              a pretty: (env join: (Block new: [e expand]))
             }
           }
         } catch: { e |

@@ -1,8 +1,6 @@
-module Anatomy.Parser (parse, parseFile, parseDefinition, continuedParse, continuedParseFile) where
+module Anatomy.Parser (parseFile, parseDefinition) where
 
-import Control.Monad.Error
-import Control.Monad.Identity
-import Control.Monad.State
+import "monads-fd" Control.Monad.Error
 import Data.Char (isSpace)
 import Data.Hashable (hash)
 import Data.List (intercalate)
@@ -11,6 +9,7 @@ import Atomo.Parser.Base (Parser)
 import qualified Atomo.Types as AT
 import qualified Atomo.Parser as AP
 import qualified Atomo.Parser.Base as AB
+import qualified "mtl" Control.Monad.Trans as MTL
 
 import Anatomy.Debug
 import Anatomy.Types
@@ -21,10 +20,11 @@ special = '#'
 
 nested :: Parser [Segment]
 nested = do
-    os <- getState
+    ps <- getState
     pos <- getPosition
     block <- balancedBetween '{' '}'
-    case runIdentity $ runParserT parser os (show pos) (cleanup block) of
+    res <- MTL.lift $ runParserT parser ps (show pos) (cleanup block)
+    case res of
         Left e -> fail ("nested: " ++ show e)
         Right ok -> return ok
   where
@@ -89,6 +89,7 @@ single :: Parser Segment
 single = fmap (debug "single") $ do
     char special
     name <- AB.identifier
+    notFollowedBy (char ':')
     dump ("got single identifier", name)
     return (SingleDispatch name)
 
@@ -105,11 +106,8 @@ parser = many $ choice
     , chunk
     ]
 
-parse :: String -> Either ParseError [Segment]
-parse = runIdentity . runParserT (do { r <- parser; eof; return r }) [] "<input>"
-
-parseFile :: String -> IO (Either ParseError [Segment])
-parseFile fn = fmap (runIdentity . runParserT (do { r <- parser; eof; return r }) [] fn) (readFile fn)
+parseFile :: String -> AT.VM [Segment]
+parseFile fn = liftIO (readFile fn) >>= AP.continue parser fn
 
 defParser :: Parser Definition
 defParser = do
@@ -128,6 +126,7 @@ defParser = do
         AT.Dispatch l (AT.EKeyword (hash [":="]) [":="] [AT.Primitive l (AT.Pattern p), e])
     toDispatch (AT.Set { AT.eLocation = l, AT.ePattern = p, AT.eExpr = e }) =
         AT.Dispatch l (AT.EKeyword (hash ["="]) ["="] [AT.Primitive l (AT.Pattern p), e])
+    toDispatch e = error $ "no toDispatch for: " ++ show e
 
 -- restore the whitespace that a lexeme parser nom'd up
 unlexeme :: Parser a -> Parser a
@@ -161,25 +160,8 @@ balancedBetween o c = try $ do
     char c
     return $ concat raw
 
-
-continuedParser :: Parser a -> String -> String -> AT.VM a
-continuedParser p s i = do
-    ps <- gets AT.parserState
-    case runIdentity $ runParserT (do { r <- p; s <- getState; return (s, r) }) ps s i of
-        Left e -> throwError (AT.ParseError e)
-        Right (ps', es) -> do
-            modify $ \e -> e { AT.parserState = ps' }
-            return es
-
--- | parse input i from source s, maintaining parser state between parses
-continuedParse :: String -> String -> AT.VM [Segment]
-continuedParse = continuedParser parser
-
-continuedParseFile :: FilePath -> AT.VM [Segment]
-continuedParseFile fn = liftIO (readFile fn) >>= continuedParse fn
-
 parseDefinition :: String -> AT.VM Definition
-parseDefinition = continuedParser
+parseDefinition = AP.continue
     (do { r <- defParser; eof; return r })
     "<definition>"
 

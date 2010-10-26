@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Anatomy.Builder where
 
-import Control.Monad.State (evalStateT)
+import "monads-fd" Control.Monad.State (evalStateT)
 import Data.Char
 import Data.Dynamic
 import Data.IORef
@@ -16,8 +16,11 @@ import Anatomy.Parser
 import Anatomy.Types
 
 import Atomo
+import Atomo.Run
+import Atomo.Load
 import Atomo.Method
 import Atomo.Pretty
+import Atomo.PrettyVM
 
 import Paths_anatomy
 
@@ -47,7 +50,7 @@ scan d n p ss' = do
         fn <- findFile [sectionPath acc, ""] cfn
         liftIO (putStrLn ("including section: " ++ fn))
 
-        ast <- continuedParseFile fn
+        ast <- parseFile fn
         sec <- fmap (\s -> s { sectionParent = Just (sectionID acc) }) $
             scan (d + 1) (length (subSections acc) + 1) (takeDirectory fn) ast
 
@@ -233,9 +236,11 @@ buildFile fn o = do
     writeFile (o </> "anatomy.css") css
 
     path <- fmap takeDirectory $ canonicalizePath fn
-    p <- parseFile fn
-    case p of
-        Right ast -> do
+
+    exec $ do
+        ast <- parseFile fn
+
+        liftIO $ do
             sec <- newSection $ \s -> s { sectionPath = path }
             estart <- runA (fmap (Haskell . toDyn) $ lift $ scan 0 1 path ast) sec
 
@@ -248,7 +253,8 @@ buildFile fn o = do
                     (fromDyn start (error "runA did not return a Section"))
 
                 return ()
-        Left e -> print e
+
+        return (particle "ok")
 
 buildDocument :: FilePath -> AVM Value
 buildDocument o = do
@@ -373,7 +379,7 @@ initA = do
         path <- fmap takeDirectory . liftIO $ canonicalizePath fn
         
         liftIO (putStrLn ("path: " ++ path))
-        ast <- continuedParseFile fn
+        ast <- parseFile fn
         sec <- scan 0 1 path ast
         [$p|a state|] =:: Haskell (toDyn sec)
         here "a"
