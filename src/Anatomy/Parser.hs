@@ -61,23 +61,26 @@ keyword = fmap (debug "keyword") $ do
 
             -- operator reference
             , try $ fmap (\x -> Atomo $ AT.Dispatch Nothing (AT.EKeyword (hash [x]) [x] [AT.ETop Nothing, AT.ETop Nothing])) $
-                between (char '(') (char ')') (many1 (oneOf (':':AB.opLetters)))
+                between (char '(') (char ')')
+                    (many1 (satisfy (\c -> c == ':' || AB.isOpLetter c)))
 
             -- keyword reference
             , try $ fmap (\ks -> Atomo $ AT.Dispatch Nothing (AT.EKeyword (hash ks) ks (replicate (length ks + 1) (AT.ETop Nothing)))) $
-                between (char '(') (char ')') (many1 (AB.identifier >>= \n -> char ':' >> return n))
+                between (char '(') (char ')')
+                    (many1 (AB.identifier >>= \n -> char ':' >> return n))
 
             -- single reference; trailing punctuation is ignored
             , do
                 ident <- AB.anyIdent
 
-                let punct = reverse . takeWhile (`elem` AB.opLetters) . reverse $ ident
-                    sane = reverse . dropWhile (`elem` AB.opLetters) . reverse $ ident
+                let punct = reverse . takeWhile AB.isOpLetter . reverse $ ident
+                    sane = reverse . dropWhile AB.isOpLetter . reverse $ ident
                 
                 getInput >>= setInput . (punct ++)
 
                 return . Atomo . AT.Dispatch Nothing $ AT.ESingle (hash sane) sane (AT.ETop Nothing)
             ]
+        dump ("got value", val)
         return (name, val)
 
     let (ns, vs) = unzip ks
@@ -92,18 +95,21 @@ single = fmap (debug "single") $ do
     dump ("got single identifier", name)
     return (SingleDispatch name)
 
-the :: Parser Segment
-the = fmap (debug "the") $ do
+atomo :: Parser Segment
+atomo = fmap (debug "atomo") $ do
     char special
     fmap Atomo (between (char '(') (char ')') AP.pExpr)
 
 parser :: Parser [Segment]
-parser = many $ choice
-    [ try keyword
-    , try single
-    , try the
-    , chunk
-    ]
+parser = do
+    ss <- many $ choice
+        [ try keyword
+        , try single
+        , try atomo
+        , chunk
+        ]
+    eof
+    return ss
 
 parseFile :: String -> AT.VM [Segment]
 parseFile fn = liftIO (readFile fn) >>= AP.continue parser fn
