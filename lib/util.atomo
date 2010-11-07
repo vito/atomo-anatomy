@@ -10,9 +10,9 @@
 (s: String) escape :=
   s match: {
     "" -> ""
-    '<' . ss -> "&lt;" .. ss escape
-    '>' . ss -> "&gt;" .. ss escape
-    '&' . ss -> "&amp;" .. ss escape
+    $< . ss -> "&lt;" .. ss escape
+    $> . ss -> "&gt;" .. ss escape
+    $& . ss -> "&amp;" .. ss escape
     s . ss -> s . ss escape
   }
 

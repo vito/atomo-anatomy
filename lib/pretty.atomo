@@ -16,11 +16,11 @@ value-output? = Parameter new: False
 
 -- indent s up to the current indentation level
 indented: (s: String) :=
-  (' ' repeat: (indent-level _? * 2)) .. s
+  ($  repeat: (indent-level _? * 2)) .. s
 
 -- an empty line, followed by (indentation - 1) indentation
 unindent :=
-  "\n" .. (' ' repeat: ((indent-level _? - 1) * 2))
+  "\n" .. ($  repeat: ((indent-level _? - 1) * 2))
 
 
 -- default pretty-printer; just do @show
@@ -96,9 +96,9 @@ A pretty: (p: Pattern) :=
 
 (a: A) pretty: (e: Expression) :=
   { pretty = e type match: {
-      @dispatch ->
+      @(dispatch: type) ->
         with: value-output? as: False do: {
-          a pretty-dispatch: e type: e dispatch-type
+          a pretty-dispatch: e type: type
         }
 
       @define ->
@@ -136,11 +136,8 @@ A pretty: (p: Pattern) :=
           "[" .. e contents (map: { l | a pretty: l }) (join: ", ") .. "]"
         }
 
-      @particle ->
-        e particle-type match: {
-          @single -> a pretty: e evaluate
-          @keyword -> a pretty-particle: e
-        }
+      @(particle: @single) -> a pretty: e evaluate
+      @(particle: @keyword) -> a pretty-particle: e
 
       @primitive -> a pretty: e evaluate
 
@@ -160,7 +157,7 @@ A pretty: (p: Pattern) :=
 
 (a: A) pretty-dispatch: e type: @single :=
   with: context as: @single do: {
-    msg = (a linked: e as: e particle name) type: "dispatch single"
+    msg = (a linked: e as: e name) type: "dispatch single"
 
     if: (e target type == @top)
       then: { msg }
@@ -177,11 +174,11 @@ A pretty: (p: Pattern) :=
       rest =
         if: e targets (map: @type) (all?: @(== @top))
           then: {
-            a linked: e as: e particle names (map: @keywordfy) join
+            a linked: e as: e names (map: @keywordfy) join
           }
           else: {
-            ks = (0 ... e particle names length) map: { n |
-              name = e particle names (at: n)
+            ks = (0 ... e names length) map: { n |
+              name = e names (at: n)
               value = a pretty: e targets (at: (n + 1))
 
               (a linked: e as: name keywordfy) .. " " .. value

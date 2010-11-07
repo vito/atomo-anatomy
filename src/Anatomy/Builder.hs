@@ -1,208 +1,107 @@
-{-# LANGUAGE QuasiQuotes #-}
 module Anatomy.Builder where
 
-import "monads-fd" Control.Monad.State (evalStateT)
+import "monads-fd" Control.Monad.State
 import Data.Char
 import Data.Dynamic
 import Data.IORef
 import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup
-import qualified Data.IntMap as IM
-import qualified Data.Vector as V
 
+import {-# SOURCE #-} qualified Anatomy.Atomo as A
 import Anatomy.AutoFlow
 import Anatomy.Parser
+import Anatomy.Scanner
 import Anatomy.Types
 
-import Atomo
+import Atomo.Environment
 import Atomo.Run
-import Atomo.Load
-import Atomo.Method
-import Atomo.Pretty
 import Atomo.PrettyVM
+import Atomo.Types
 
 import Paths_anatomy
 
 
--- scan through everything and build up the initial state for generation
-scan :: Int -> Int -> FilePath -> [Segment] -> VM Section
-scan d n p ss' = do
-    sec <- liftIO . newSection $ \s -> s
-        { sectionDepth = d
-        , sectionNumber = n
-        , sectionPath = p
-        }
-
-    st <- scan' sec ss'
-    liftIO (writeIORef (sectionID st) st)
-    return st
-  where
-    scan' acc [] = return acc
-    scan' acc (KeywordDispatch ["title"] [s]:ss) =
-        scan' (acc { sectionTitle = Title s Nothing Nothing }) ss
-    scan' acc (KeywordDispatch ["title", "tag"] [s, t]:ss) =
-        scan' (acc { sectionTitle = Title s (Just t) Nothing }) ss
-    scan' acc (KeywordDispatch ["title", "tag", "version"] [s, t, v]:ss) =
-        scan' (acc { sectionTitle = Title s (Just t) (Just v) }) ss
-    scan' acc (KeywordDispatch ["include-section"] [sfn]:ss) = do
-        cfn <- buildForString sfn
-        fn <- findFile [sectionPath acc, ""] cfn
-        liftIO (putStrLn ("including section: " ++ fn))
-
-        ast <- parseFile fn
-        sec <- fmap (\s -> s { sectionParent = Just (sectionID acc) }) $
-            scan (d + 1) (length (subSections acc) + 1) (takeDirectory fn) ast
-
-        liftIO (writeIORef (sectionID sec) sec)
-
-        scan' (acc
-            { sectionBody = sectionBody acc ++
-                [SectionReference (length (subSections acc))]
-            , subSections = subSections acc ++ [sec]
-            }) ss
-      where
-        findFile [] fn = throwError (FileNotFound fn)
-        findFile (p:ps) fn = do
-            check <- liftIO . doesFileExist $ p </> fn
-
-            if check
-                then liftIO (canonicalizePath (p </> fn))
-                else findFile ps fn
-            
-    scan' acc (KeywordDispatch ["section"] [st]:ss) = do
-        liftIO (putStrLn ("subsection: " ++ show st))
-
-        sec <- fmap (\s -> s
-            { sectionTitle = Title st Nothing Nothing
-            , sectionParent = Just (sectionID acc)
-            }) $ scan (d + 1) (length (subSections acc) + 1) "" sb
-
-        liftIO (writeIORef (sectionID sec) sec)
-
-        scan' (acc
-            { sectionBody = sectionBody acc ++
-                [SectionReference (length (subSections acc))]
-            , subSections = subSections acc ++ [sec]
-            }) rest
-      where
-        (sb, rest) = span (\s ->
-            case s of
-                KeywordDispatch ["section"] _ -> False
-                _ -> True) ss
-    scan' acc (KeywordDispatch ["define"] [sb]:ss) = do
-        liftIO (putStrLn "definition")
-        body <- buildForString sb
-
-        def <- parseDefinition body
-        scan' (acc
-            { sectionBody = sectionBody acc ++ [InlineDefinition def Nothing]
-            , sectionBindings = defKey def : sectionBindings acc
-            }) ss
-    scan' acc (KeywordDispatch ["define", "body"] [sd, sb]:ss) = do
-        liftIO (putStrLn "definition with body")
-
-        body <- buildForString sd
-        def <- parseDefinition body
-        scan' (acc
-            { sectionBody = sectionBody acc ++ [InlineDefinition def (Just sb)]
-            , sectionBindings = defKey def : sectionBindings acc
-            }) ss
-    scan' acc (SingleDispatch "table-of-contents":ss) = do
-        liftIO (putStrLn "table of contents")
-
-        scan' (acc
-            { sectionStyle = TOC
-            , sectionBody = sectionBody acc ++ [TableOfContents]
-            }) ss
-    scan' acc (s:ss) =
-        scan' (acc { sectionBody = sectionBody acc ++ [s] }) ss
-
-
-buildForString :: Segment -> VM String
-buildForString (Atomo e) = liftM (fromText . fromString) (eval e)
-buildForString (Chunk s) = return s -- TODO: escaping
-buildForString (Nested ns) = fmap concat (mapM buildForString ns)
-buildForString x = error $ "cannot be built into a string: " ++ show x
-
 build :: Segment -> AVM String
-build s = do
-    {-liftIO (putStrLn ("building: " ++ show s))-}
-    build' s
-  where
-    build' (Chunk s) = return s
-    build' (KeywordDispatch ["section"] [n]) = do
-        sn <- build n
-        return $ "<h4>" ++ sn ++ "</h4>"
-    build' (KeywordDispatch ns ss) = do
-        vs <- forM ss $ \s ->
-            case s of
-                Atomo e -> return (Expression e)
-                _ -> fmap string (build s)
+build (Chunk s) = return s
+build (KeywordDispatch ["section"] [n]) = do
+    sn <- build n
+    return $ "<h4>" ++ sn ++ "</h4>"
+build (KeywordDispatch ns ss) = do
+    vs <- forM ss $ \s ->
+        case s of
+            Atomo e -> return (Expression e)
+            _ -> fmap string (build s)
 
-        a <- getAObject
-        liftM (fromText . fromString) $ lift (dispatch (keyword ns (a:vs)))
-    build' (SingleDispatch n) = do
-        s <- getAObject
-        res <- lift (dispatch (single n s))
-        return (fromText $ fromString res)
-    build' (Atomo e@(Set {})) = lift (eval e) >> return ""
-    build' (Atomo e@(Define {})) = lift (eval e) >> return ""
-    build' (Atomo e) = lift (eval e >>= prettyVM >>= return . show)
-    build' (Nested ss) = fmap concat $ mapM build ss
-    build' (SectionReference n) = do
-        style <- gets sectionStyle
-        if style == TOC
-            then return ""
-            else do
+    a <- getAObject
+    liftM (fromText . fromString) $ lift (dispatch (keyword ns (a:vs)))
+build (SingleDispatch n) = do
+    s <- getAObject
+    res <- lift (dispatch (single n s))
+    return (fromText $ fromString res)
+build (Atomo e) = do
+    env <- gets sectionA >>= lift . dispatch . single "environment"
+    r <- lift (liftM show $ withTop env (eval e) >>= prettyVM)
 
-        sec <- gets ((!! n) . subSections)
-        flip runAVM sec $ do
-            title <- gets (titleText . sectionTitle)
-            depth <- do
-                myd <- gets sectionDepth
-                mp <- gets sectionParent
-                case mp of
-                    Nothing -> return myd
-                    Just p -> do
-                        pd <- fmap sectionDepth $ liftIO (readIORef p)
-                        return (myd - pd)
+    case e of
+        Set {} -> return ""
+        Define {} -> return ""
+        _ -> return r
+build (Nested ss) = fmap concat $ mapM build ss
+build (SectionReference n) = do
+    style <- gets sectionStyle
+    if style == TOC
+        then return ""
+        else do
 
-            t <- build title
-            b <- mapM build (sectionBody sec)
-            let header = "h" ++ show (depth + 1)
-            return . unlines $
-                [ "<div class=\"section\">"
-                , "  " ++ concat
-                    [ "<" ++ header ++ " class=\"section-header\" id=\"section_" ++ sanitize t ++ "\">"
-                    , t
-                    , "</" ++ header ++ ">"
-                    ]
-                , "  " ++ concat b
-                , "</div>"
-                ]
-    build' TableOfContents =
-        get >>= buildTOC >>= return . printTOC
-    build' FullTableOfContents =
-        get >>= buildTOC >>= return . printFullTOC
-    build' (InlineDefinition d b) = do
-        a <- getAObject
-        thumb <- liftM (fromText . fromString) . lift $ dispatch (keyword ["pretty"] [a, Expression (defThumb d)])
-        pr <- liftM (fromText . fromString) . lift $ dispatch (keyword ["pretty"] [a, Expression (defReturn d)])
-        pcs <- lift $ mapM (\c -> liftM (fromText . fromString) $ dispatch (keyword ["pretty"] [a, Expression c])) (defContracts d)
-        body <- maybe (return "") (fmap (++ "\n\n") . build) b
+    sec <- gets ((!! n) . subSections)
+    flip runAVM sec $ do
+        title <- gets (titleText . sectionTitle)
+        depth <- do
+            myd <- gets sectionDepth
+            mp <- gets sectionParent
+            case mp of
+                Nothing -> return myd
+                Just p -> do
+                    pd <- fmap sectionDepth $ liftIO (readIORef p)
+                    return (myd - pd)
+
+        t <- build title
+        b <- mapM build (sectionBody sec)
+
+        let header = 'h' : show (depth + 1)
         return . unlines $
-            [ "<div class=\"definition\" id=\"" ++ bindingID (defKey d) ++ "\">"
-            , "  <pre class=\"thumb\">" ++ concat
-                [ thumb
-                , " <span class=\"definition-result-arrow\">&rarr;</span> "
-                , pr
-                , concatMap ("\n  | " ++) pcs
-                ] ++ "</pre>"
-            , body
-            , ""
+            [ "<div class=\"section\">"
+            , "  " ++ concat
+                [ "<" ++ header ++ " class=\"section-header\" id=\"section_" ++ sanitize t ++ "\">"
+                , t
+                , "</" ++ header ++ ">"
+                ]
+            , "  " ++ concat b
             , "</div>"
             ]
+build TableOfContents =
+    liftM printTOC (get >>= buildTOC)
+build FullTableOfContents =
+    liftM printFullTOC (get >>= buildTOC)
+build (InlineDefinition d b) = do
+    a <- getAObject
+    thumb <- liftM (fromText . fromString) . lift $ dispatch (keyword ["pretty"] [a, Expression (defThumb d)])
+    pr <- liftM (fromText . fromString) . lift $ dispatch (keyword ["pretty"] [a, Expression (defReturn d)])
+    pcs <- lift $ mapM (\c -> liftM (fromText . fromString) $ dispatch (keyword ["pretty"] [a, Expression c])) (defContracts d)
+    body <- maybe (return "") (fmap (++ "\n\n") . build) b
+    return . unlines $
+        [ "<div class=\"definition\" id=\"" ++ bindingID (defKey d) ++ "\">"
+        , "  <pre class=\"thumb\">" ++ concat
+            [ thumb
+            , " <span class=\"definition-result-arrow\">&rarr;</span> "
+            , pr
+            , concatMap ("\n  | " ++) pcs
+            ] ++ "</pre>"
+        , body
+        , ""
+        , "</div>"
+        ]
 
 buildTOC :: Section -> AVM TOCTree
 buildTOC s
@@ -238,21 +137,15 @@ buildFile fn o = do
     path <- fmap takeDirectory $ canonicalizePath fn
 
     exec $ do
+        A.load
+
         ast <- parseFile fn
 
-        liftIO $ do
-            sec <- newSection $ \s -> s { sectionPath = path }
-            estart <- runA (fmap (Haskell . toDyn) $ lift $ scan 0 1 path ast) sec
+        start <- scan 0 1 path ast
 
-            putStrLn "scanned document"
+        liftIO (putStrLn "scanned document")
 
-            flip (either (print . pretty)) estart $ \(Haskell start) -> do
-                putStrLn "building document"
-
-                runA (buildDocument o)
-                    (fromDyn start (error "runA did not return a Section"))
-
-                return ()
+        runAVM' (buildDocument o) start
 
         return (particle "ok")
 
@@ -263,11 +156,10 @@ buildDocument o = do
     s <- get
 
     liftIO . print . titleText $ sectionTitle s
-    if sectionStyle s == TOC
-        then do
-            liftIO (putStrLn "building subsections first for table of contents")
-            mapM_ (runAVM (buildDocument o)) (subSections s)
-        else return ()
+
+    when (sectionStyle s == TOC) $ do
+        liftIO (putStrLn "building subsections first for table of contents")
+        mapM_ (runAVM (buildDocument o)) (subSections s)
 
     liftIO (putStrLn "building table of contents")
     toc <- build TableOfContents
@@ -283,9 +175,8 @@ buildDocument o = do
         case sectionParent s of
             Nothing -> return Nothing
             Just p ->
-                liftIO (readIORef p)
+                liftM Just $ liftIO (readIORef p)
                     >>= runAVM (build FullTableOfContents)
-                    >>= return . Just
 
     liftIO (putStr "writing document to...")
     fn <- sectionURL s
@@ -310,10 +201,7 @@ buildDocument o = do
         , toc
         , case mp of
               Nothing -> ""
-              Just p -> concat
-                [ "<h4>Up one level:</h4>"
-                , p
-                ]
+              Just p -> "<h4>Up one level:</h4>" ++ p
         , "    </div>"
         , "    <div id=\"content\">"
         , "      <h1>" ++ t ++ "</h1>"
@@ -326,104 +214,18 @@ buildDocument o = do
 getAObject :: AVM Value
 getAObject = do
     s <- get
-    a <- lift (here "A")
-    lift . newObject $ \o -> o
-        { oDelegates = oDelegates o ++ [a]
-        , oMethods = 
-            ( addMethod (Slot (psingle "state" PThis) (Haskell (toDyn s))) IM.empty
-            , IM.empty
-            )
-        }
-    
-runAVM :: AVM a -> Section -> AVM a
-runAVM a s = lift (evalStateT a s)
 
-runAVM' :: AVM a -> Section -> VM a
-runAVM' = evalStateT
+    lift $ defineOn (sectionA s)
+        (Slot (psingle "state" PThis) (Haskell (toDyn s)))
 
-runA :: AVM Value -> Section -> IO (Either AtomoError Value)
-runA a s = run go'
-  where
-    go' = catchError (initA >> evalStateT a s) $ \e -> do
-        printError e
-        throwError e
-
-newSection :: (Section -> Section) -> IO Section
-newSection f = do
-    r <- newIORef undefined
-
-    writeIORef r . f $ Section
-        { sectionID = r
-        , sectionTitle = Title (Chunk "Untitled") Nothing Nothing
-        , sectionStyle = None
-        , sectionBody = []
-        , sectionBindings = []
-        , sectionParent = Nothing
-        , subSections = []
-        , sectionDepth = 0
-        , sectionNumber = 1
-        , sectionPath = ""
-        }
-
-    readIORef r
-
-initA :: VM ()
-initA = do
-    ([$p|A|] =::) =<< eval [$e|Object clone|]
-
-    liftIO (getDataFileName "lib/core.atomo") >>= loadFile
-
-    [$p|(a: A) new: (fn: String)|] =: do
-        fn <- getString [$e|fn|]
-
-        path <- fmap takeDirectory . liftIO $ canonicalizePath fn
-        
-        liftIO (putStrLn ("path: " ++ path))
-        ast <- parseFile fn
-        sec <- scan 0 1 path ast
-        [$p|a state|] =:: Haskell (toDyn sec)
-        here "a"
-        
-    [$p|(a: A) url-for: (e: Expression)|] =: do
-        Expression ae <- here "e" >>= findExpression
-        Haskell a <- eval [$e|a state|]
-
-        let st = fromDyn a (error "hotlink A is invalid") :: Section
-
-        find <-
-            case ae of
-                Dispatch { eMessage = ESingle { emName = n } } -> do
-                    runAVM' (findBinding (SingleKey n) st) st
-                Dispatch { eMessage = EKeyword { emNames = ns } } -> do
-                    runAVM' (findBinding (KeywordKey ns) st) st
-                _ -> error $ "no @url-for: for " ++ show (pretty ae)
-
-        case find of
-            Nothing -> return (particle "none")
-            Just u ->
-                return (keyParticle ["ok"] [Nothing, Just (string u)])
-
-    [$p|(a: A) reference: (s: String)|] =: do
-        n <- getString [$e|s|]
-        Haskell a <- eval [$e|a state|]
-
-        let st = fromDyn a (error "hotlink A is invalid") :: Section
-
-        flip runAVM' st $ do
-            ms <- findSection n st
-            case ms of
-                Nothing -> return (string n)
-                Just s -> do
-                    url <- sectionURL s
-                    name <- build (titleText (sectionTitle s))
-                    return (string $ "<a href=\"" ++ url ++ "\">" ++ name ++ "</a>")
+    return (sectionA s)
 
 findSection :: String -> Section -> AVM (Maybe Section)
 findSection n s = do
     tag <-
         case titleTag (sectionTitle s) of
             Nothing -> return Nothing
-            Just s -> fmap Just $ buildForString' s
+            Just t -> fmap Just $ buildForString' t
     title <- build (titleText (sectionTitle s))
     if n == title || Just n == tag
         then return (Just s)
@@ -431,7 +233,7 @@ findSection n s = do
 
     kids <- findFirstSection n (subSections s)
     case (kids, sectionParent s) of
-        (Just s, _) -> return (Just s)
+        (Just k, _) -> return (Just k)
         (Nothing, Nothing) -> return Nothing
         (Nothing, Just pr) -> do
             p <- liftIO (readIORef pr)
@@ -442,7 +244,7 @@ findSectionDownward n s = do
     tag <-
         case titleTag (sectionTitle s) of
             Nothing -> return Nothing
-            Just s -> fmap Just $ buildForString' s
+            Just t -> fmap Just $ buildForString' t
 
     title <- build (titleText (sectionTitle s))
     if n == title || Just n == tag
@@ -455,7 +257,6 @@ findFirstSection k (s:ss) = do
     f <- findSectionDownward k s
     maybe (findFirstSection k ss) (return . Just) f
 
-
 findBinding :: BindingKey -> Section -> AVM (Maybe String)
 findBinding k s =
     if k `elem` sectionBindings s
@@ -464,7 +265,7 @@ findBinding k s =
 
     kids <- findFirstBinding k (subSections s)
     case (kids, sectionParent s) of
-        (Just s, _) -> return (Just s)
+        (Just b, _) -> return (Just b)
         (Nothing, Nothing) -> return Nothing
         (Nothing, Just pr) -> do
             p <- liftIO (readIORef pr)

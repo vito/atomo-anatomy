@@ -50,13 +50,13 @@ A link: (name: String) to: (url: String) :=
 
 -- a REPL simulator
 (a: A) interaction: (e: Expression) :=
-  a interaction: e evaluate on: Object clone
+  a interaction: e evaluate on: Lobby clone
 (a: A) interaction: (b: Block) :=
-  a interaction: b on: Object clone
+  a interaction: b on: Lobby clone
 
 -- a REPL simulator locked into an environment
 (a: A) interaction: (e: Expression) on: (t: Expression) :=
-  a interaction: e evaluate on: (t evaluate-in: sender)
+  a interaction: e evaluate on: (t evaluate-in: a environment)
 (a: A) interaction: (b: Block) on: env :=
   { ("interaction: " .. b show) print
 
@@ -64,15 +64,14 @@ A link: (name: String) to: (url: String) :=
       { res = {
           with: value-output? as: True do: {
             with-all-output-to: "fake-output" do: {
-              a pretty: (env join: (Block new: [e expand]))
+              a pretty: (e expand evaluate-in: env)
             }
           }
         } catch: { e |
           (a pretty: e) type: "error"
         }
 
-        [
-          "&gt;" type: "caret"
+        [ "&gt;" type: "caret"
           " "
           a pretty: e
           "\n"

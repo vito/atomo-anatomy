@@ -36,11 +36,10 @@ nested = do
 
 chunk :: Parser Segment
 chunk = do
-    text <- anyToken `manyTill` (eof <|> lookAhead (char special >> return ()))
-    dump ("got chunk", text)
-    if null text
-        then fail "empty chunk"
-        else return (Chunk text)
+    c <- satisfy (/= special)
+    cs <- anyToken `manyTill` (eof <|> lookAhead (char special >> return ()))
+    dump ("got chunk", c:cs)
+    return (Chunk (c:cs))
 
 keyword :: Parser Segment
 keyword = fmap (debug "keyword") $ do
@@ -137,8 +136,7 @@ unlexeme p = do
     backtrack before after
     return r
   where
-    backtrack b a = do
-        setInput (trailing ++ a)
+    backtrack b a = setInput (trailing ++ a)
       where
         trailing
             = reverse

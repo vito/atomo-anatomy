@@ -38,12 +38,15 @@ library
     vector
 
   exposed-modules:
+    Anatomy.Atomo,
     Anatomy.AutoFlow,
     Anatomy.Builder,
-    Anatomy.Debug,
     Anatomy.Parser,
     Anatomy.Types,
     Paths_anatomy
+
+  other-modules:
+    Anatomy.Debug
 
 
 executable anatomy
@@ -51,7 +54,7 @@ executable anatomy
   main-is:            Main.hs
   
   ghc-prof-options:   -prof -auto-all -caf-all
-  ghc-options:        -O2 -Wall -threaded -fno-warn-unused-do-bind
+  ghc-options:        -Wall -threaded -fno-warn-unused-do-bind
 
   extensions:         PackageImports
 

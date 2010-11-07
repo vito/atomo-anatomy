@@ -47,6 +47,7 @@ data Section =
         , sectionDepth :: Int
         , sectionNumber :: Int
         , sectionPath :: FilePath
+        , sectionA :: AT.Value
         }
     deriving (Show, Typeable)
 
@@ -84,3 +85,31 @@ defKey d =
 bindingID :: BindingKey -> String
 bindingID (KeywordKey ns) = "definition_" ++ concatMap (++ ":") ns
 bindingID (SingleKey n) = "definition_" ++ n
+
+runAVM :: AVM a -> Section -> AVM a
+runAVM a s = lift (evalStateT a s)
+
+runAVM' :: AVM a -> Section -> AT.VM a
+runAVM' = evalStateT
+
+newSection :: (Section -> Section) -> IO Section
+newSection f = do
+    r <- newIORef undefined
+    writeIORef r (sec r)
+    return (sec r)
+  where
+    sec r = f Section
+        { sectionID = r
+        , sectionTitle = Title (Chunk "Untitled") Nothing Nothing
+        , sectionStyle = None
+        , sectionBody = []
+        , sectionBindings = []
+        , sectionParent = Nothing
+        , subSections = []
+        , sectionDepth = 0
+        , sectionNumber = 1
+        , sectionPath = ""
+        , sectionA = error "no section anatomy"
+        }
+
+
