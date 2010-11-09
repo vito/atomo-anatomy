@@ -1,6 +1,9 @@
 require: "pretty.atomo"
 require: "util.atomo"
 
+(a: A) evaluate: (e: Expression) :=
+  a environment evaluate: e
+
 -- various semantic helpers
 A bold: s := s in-tag: "strong"
 A italic: s := s in-tag: "em"
@@ -14,8 +17,8 @@ A verbatim: (s: String) :=
   s escape in-tag: "pre class=\"verbatim\""
 
 -- external link
-(a: A) link: name to: (url: Expression) := a link: name to: url evaluate
-(a: A) link: (name: Expression) to: url := a link: name evaluate to: url
+(a: A) link: name to: (url: Expression) := a link: name to: (a evaluate: url)
+(a: A) link: (name: Expression) to: url := a link: (a evaluate: name) to: url
 A link: (name: String) to: (url: String) :=
   name in-tag: ("a href=\"" .. url .. "\" class=\"external\"")
 
@@ -29,7 +32,7 @@ A link: (name: String) to: (url: String) :=
 
 -- pretty-print a block of expressions
 (a: A) atomo-segment: (e: Expression) :=
-  e evaluate contents (map: { c | a pretty: c }) (join: "\n")
+  (a evaluate: e) contents (map: { c | a pretty: c }) (join: "\n")
     in-tag: "pre class=\"verbatim\""
 
 -- example code (unevaluated)
@@ -50,39 +53,58 @@ A link: (name: String) to: (url: String) :=
 
 -- a REPL simulator
 (a: A) interaction: (e: Expression) :=
-  a interaction: e evaluate on: Lobby clone
+  a interaction: (a evaluate: e) on: Lobby clone
 (a: A) interaction: (b: Block) :=
   a interaction: b on: Lobby clone
 
 -- a REPL simulator locked into an environment
 (a: A) interaction: (e: Expression) on: (t: Expression) :=
-  a interaction: e evaluate on: (t evaluate-in: a environment)
+  a interaction: (a evaluate: e) on: (a evaluate: t)
 (a: A) interaction: (b: Block) on: env :=
   { ("interaction: " .. b show) print
 
     log =  b contents (map: { e |
-      { res = {
-          with: value-output? as: True do: {
-            with-all-output-to: "fake-output" do: {
-              a pretty: (e expand evaluate-in: env)
-            }
-          }
-        } catch: { e |
-          (a pretty: e) type: "error"
-        }
-
-        [ "&gt;" type: "caret"
-          " "
-          a pretty: e
-          "\n"
-          File (read: "fake-output") escape
-          res
-          "\n"
-        ] join
-      } ensuring: {
-        when: File (exists?: "fake-output")
-          do: { File delete: "fake-output" }
+      output = String-Port new do: {
+        display: s :=
+          { output contents = output contents .. s (as: String) escape
+            s
+          } call
       }
+
+      error = String-Port new do: {
+        display: s :=
+          { error contents = error contents .. (s as: String)
+            output contents = output contents .. (s (as: String) escape type: "error-output")
+            s
+          } call
+      }
+
+      res = {
+        with: [
+          value-output? -> True
+          *error-output* -> error
+        ] do: {
+          with-all-output-to: output do: {
+            a pretty: (env evaluate: e expand)
+          }
+        }
+      } catch: { e |
+        (a pretty: e) type: "error"
+      }
+
+      error-output =
+        if: error eof?
+          then: { "" }
+          else: { error contents type: "error-output" }
+
+      [ "&gt;" type: "caret"
+        " "
+        a pretty: e
+        "\n"
+        output contents
+        res
+        "\n"
+      ] join
     }) join
 
     log in-tag: "pre class=\"interaction\""

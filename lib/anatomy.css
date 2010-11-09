@@ -181,3 +181,10 @@ pre .dispatch.single > a {
     color: #000;
     font-weight: bold;
 }
+
+.error-output {
+    display: block;
+    font-style: italic;
+    background: #fee;
+    color: #a33;
+}

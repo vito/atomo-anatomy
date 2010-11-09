@@ -1,4 +1,4 @@
-(e: Expression) in-tag: t := e evaluate (as: String) in-tag: t
+(e: Expression) in-tag: t := (evaluate: e) (as: String) in-tag: t
 (s: String) in-tag: t := "<" .. t .. ">" .. s .. "</" .. t words head .. ">"
 
 (s: String) operator? :=

@@ -136,12 +136,12 @@ A pretty: (p: Pattern) :=
           "[" .. e contents (map: { l | a pretty: l }) (join: ", ") .. "]"
         }
 
-      @(particle: @single) -> a pretty: e evaluate
+      @(particle: @single) -> a pretty: (a evaluate: e)
       @(particle: @keyword) -> a pretty-particle: e
 
-      @primitive -> a pretty: e evaluate
+      @primitive -> a pretty: (a evaluate: e)
 
-      @block -> a pretty: e evaluate
+      @block -> a pretty: (a evaluate: e)
 
       @call -> "dispatch" type: "call"
 
