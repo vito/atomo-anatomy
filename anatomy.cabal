@@ -3,7 +3,7 @@ version:             0.1
 synopsis:            Anatomy: Atomo documentation system
 homepage:            http://darcsden.com/alex/anatomy
 license:             BSD3
-license-file:        LICENSE
+license-file:        COPYING
 author:              Alex Suraci
 maintainer:          i.am@toogeneric.com
 category:            Development
