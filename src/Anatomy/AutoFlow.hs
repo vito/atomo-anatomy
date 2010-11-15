@@ -66,7 +66,7 @@ isFlow x = isPhrasing x || isBlock x
 
 isFlowable :: String -> Bool
 isFlowable = flip elem . words $
-    "div"
+    "article aside blockquote dd div dl footer header section"
 
 getTagContent :: String -> [Tag String] -> [Tag String]
 getTagContent n ts' = getTagContent' 0 [] ts'
