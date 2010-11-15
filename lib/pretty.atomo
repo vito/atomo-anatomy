@@ -84,7 +84,11 @@ A pretty: (p: Pattern) :=
         else: { " " .. pretty-contents (join: "; ") .. " " }
     
     condition: {
-      contents strip empty? -> "{}" type: "block"
+      contents strip empty? && b arguments empty? ->
+        "{ }" type: "block"
+
+      contents strip empty? ->
+        ("{ " .. arguments .. " | }") type: "block"
 
       b arguments empty? ->
         ("{" .. contents .. "}") type: "block"
