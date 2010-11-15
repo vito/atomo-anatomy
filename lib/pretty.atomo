@@ -159,6 +159,8 @@ A pretty: (p: Pattern) :=
           a pretty: (a evaluate: e)
         }
 
+      @top -> "this" type: "top"
+
       @quote ->
         with: [
           value-output? -> False

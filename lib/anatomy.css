@@ -139,7 +139,7 @@ pre a:hover {
     color: #0086D2;
     font-weight: bold;
 }
-.boolean {
+.boolean, .top {
     font-weight: bold;
 }
 .integer {
