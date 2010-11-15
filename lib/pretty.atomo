@@ -102,7 +102,10 @@ A pretty: (p: Pattern) :=
         }
 
       @define ->
-        with: value-output? as: False do: {
+        with: [
+          value-output? -> False
+          context -> @define
+        ] do: {
           pat = a pretty: e pattern
 
           if: multiline-pretty? _?
@@ -132,28 +135,71 @@ A pretty: (p: Pattern) :=
         }
 
       @list ->
-        with: context as: @list do: {
+        with: [
+          value-output? -> False
+          context -> @list
+        ] do: {
           "[" .. e contents (map: { l | a pretty: l }) (join: ", ") .. "]"
         }
 
       @(particle: @single) -> a pretty: (a evaluate: e)
-      @(particle: @keyword) -> a pretty-particle: e
 
-      @primitive -> a pretty: (a evaluate: e)
+      @(particle: @keyword) ->
+        with: context as: @particle do: {
+          a pretty-particle: e
+        }
 
-      @block -> a pretty: (a evaluate: e)
+      @primitive ->
+        with: value-output? as: True do: {
+          a pretty: (a evaluate: e)
+        }
 
-      @call -> "dispatch" type: "call"
+      @block ->
+        with: context as: @block do: {
+          a pretty: (a evaluate: e)
+        }
 
-      x -> e show escape
+      @quote ->
+        with: [
+          value-output? -> False
+          context -> @quote
+        ] do: {
+          "`" .. (a pretty-segment: e expression)
+        }
+
+      @unquote ->
+        with: [
+          value-output? -> False
+          context -> @unquote
+        ] do: {
+          "~" .. (a pretty-segment: e expression)
+        }
+
+      x -> e show (drop: 2) tail escape -- remove '( and )
     }
 
-    if: value-output? _?
-      then:
-        { ("<expression " escape .. pretty .. ">" escape) type: "internal"
-        }
-      else: { pretty }
+    condition: {
+      value-output? _? not -> pretty
+
+      e needs-parens? ->
+        "'(" .. pretty .. ")"
+
+      otherwise -> "'" .. pretty
+    }
   } call
+
+(e: Expression) needs-parens? :=
+  e type match: {
+    @(dispatch: @single) ->
+      e target type /= @top
+
+    x -> x in?: [@define, @set, @(dispatch: @keyword)]
+  }
+
+(a: A) pretty-segment: (e: Expression) :=
+  if: e needs-parens?
+    then: { "(" .. (a pretty: e) .. ")" }
+    else: { a pretty: e }
 
 (a: A) pretty-dispatch: e type: @single :=
   with: context as: @single do: {
