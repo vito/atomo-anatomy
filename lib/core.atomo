@@ -92,11 +92,6 @@ A link: (name: String) to: (url: String) :=
         (a pretty: e) type: "error"
       }
 
-      error-output =
-        if: error eof?
-          then: { "" }
-          else: { error contents type: "error-output" }
-
       [ "&gt;" type: "caret"
         " "
         a pretty: e
