@@ -59,7 +59,7 @@ executable anatomy
   extensions:         PackageImports
 
   build-depends:
-    atomo,
+    atomo >= 0.2.2.1,
     base >= 4,
     containers,
     directory,
