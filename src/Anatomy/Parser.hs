@@ -5,9 +5,11 @@ import Data.Char (isSpace)
 import Data.Hashable (hash)
 import Data.List (intercalate)
 import Text.Parsec hiding (parse)
+import Atomo.Parser (continue)
 import Atomo.Parser.Base (Parser)
+import Atomo.Parser.Expand
+import Atomo.Parser.Expr hiding (parser)
 import qualified Atomo.Types as AT
-import qualified Atomo.Parser as AP
 import qualified Atomo.Parser.Base as AB
 import qualified "mtl" Control.Monad.Trans as MTL
 
@@ -51,11 +53,11 @@ keyword = do
             [ fmap Nested nested
             , try $ fmap Atomo . choice $
                 -- literal value
-                [ unlexeme AP.pLiteral
+                [ unlexeme pLiteral
 
                 -- arbitrary expr
                 , try . between (char '(') (char ')') $
-                    AP.pExpr
+                    pExpr
                 ]
 
             -- operator reference
@@ -97,7 +99,7 @@ single = fmap (debug "single") $ do
 atomo :: Parser Segment
 atomo = fmap (debug "atomo") $ do
     char special
-    fmap Atomo (between (char '(') (char ')') AP.pExpr >>= AP.macroExpand)
+    fmap Atomo (between (char '(') (char ')') pExpr >>= macroExpand)
 
 parser :: Parser [Segment]
 parser = do
@@ -111,23 +113,23 @@ parser = do
     return ss
 
 parseFile :: String -> AT.VM [Segment]
-parseFile fn = liftIO (readFile fn) >>= AP.continue parser fn
+parseFile fn = liftIO (readFile fn) >>= continue parser fn
 
 defParser :: Parser Definition
 defParser = do
-    thumb <- AP.pDispatch
+    thumb <- pDispatch
 
     AB.whiteSpace
 
     cs <- many . try $ do
         AB.symbol "|"
-        d <- AP.pDispatch
+        d <- pDispatch
         AB.whiteSpace
         return d
 
     AB.whiteSpace
 
-    ret <- AB.symbol ">" >> AP.pDispatch
+    ret <- AB.symbol ">" >> pDispatch
 
     return Definition
         { defThumb = thumb
@@ -167,7 +169,7 @@ balancedBetween o c = try $ do
     return $ concat raw
 
 parseDefinition :: String -> AT.VM Definition
-parseDefinition = AP.continue
+parseDefinition = continue
     (do { r <- defParser; eof; return r })
     "<definition>"
 
