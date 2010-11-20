@@ -42,8 +42,10 @@ A link: (name: String) to: (url: String) :=
 
 -- pretty-print a block of Atomo code, multiline
 (a: A) atomo-block: (e: Expression) :=
+  a atomo-block: (a evaluate: e)
+(a: A) atomo-block: (b: Block) :=
   with: multiline-pretty? as: True do: {
-    a atomo-line: e
+    b contents (map: { e | a atomo-line: e }) join
   }
 
 -- example interaction session

@@ -34,7 +34,7 @@ A pretty: o :=
 
 -- primitive pretty-printers
 A pretty: (c: Char) := c show escape type: "char"
-A pretty: (b: Boolean) := b show escape type: "boolean"
+A pretty: (b: Boolean) := b show escape type: "keyword boolean"
 A pretty: (d: Double) := d show escape type: "number double"
 A pretty: (i: Integer) := i show escape type: "number integer"
 A pretty: (r: Rational) := r show escape type: "number rational"
@@ -78,11 +78,11 @@ A pretty: (p: Pattern) :=
     contents =
       if: multiline-pretty? _?
         then: {
-          exprs = pretty-contents (map: { c | "\n" .. (indented: c) }) join
+          exprs = pretty-contents (map: { c | "\n" .. (indented: c) }) join strip-end
           exprs .. unindent
         }
         else: { " " .. pretty-contents (join: "; ") .. " " }
-    
+
     condition: {
       contents strip empty? && b arguments empty? ->
         "{ }" type: "block"
@@ -163,7 +163,27 @@ A pretty: (p: Pattern) :=
           a pretty: (a evaluate: e)
         }
 
-      @top -> "this" type: "top"
+      @top -> "this" type: "keyword top"
+
+      @macro ->
+        [ "macro" type: "keyword macro"
+          "(" .. (a pretty: e pattern) .. ")"
+          a pretty: e expression
+        ] unwords
+
+      @operator ->
+        [ "operator" type: "keyword operator"
+          e associativity name
+          a pretty: e precedence
+          e operators
+            (map: { o | a linked: `~o as: o names head })
+            unwords
+        ] unwords
+
+      @for-macro ->
+        [ "for-macro" type: "keyword for-macro"
+          a pretty: e expression
+        ] unwords
 
       @quote ->
         with: [
@@ -181,7 +201,7 @@ A pretty: (p: Pattern) :=
           "~" .. (a pretty-segment: e expression)
         }
 
-      x -> e show (drop: 2) tail escape -- remove '( and )
+      x -> e show (drop: 2) init escape -- remove '( and )
     }
 
     condition: {
@@ -217,34 +237,61 @@ A pretty: (p: Pattern) :=
   }
 
 (a: A) pretty-dispatch: e type: @keyword :=
-  { with: context as: @keyword do: {
-      initial =
-        if: (e targets head type == @top)
-          then: { "" }
-          else: { (a pretty: e targets head) .. " " }
+  condition: {
+    e targets empty? ->
+      (a linked: e as: e names (map: @keywordfy) join)
+        type: "dispatch keyword"
 
-      rest =
-        if: e targets (map: @type) (all?: @(== @top))
+    e names == [":="] ->
+      with: context as: @define do: {
+        pat = a pretty: e targets head
+        exp = e targets (at: 1)
+        key = a linked: e as: ":="
+
+        if: multiline-pretty? _?
           then: {
-            a linked: e as: e names (map: @keywordfy) join
+            modify: indent-level as: @(+ 1) do: {
+              expr = a pretty: exp
+              pat .. " " .. key .. "\n" .. (indented: expr) .. "\n"
+            }
+          } else: {
+            pat .. " " .. key .. " " .. (a pretty: exp)
           }
-          else: {
-            ks = (0 ... e names length) map: { n |
+      }
+
+    e names == ["="] ->
+      with: context as: @set do: {
+        pat = a pretty: e targets head
+        exp = e targets (at: 1)
+        key = a linked: e as: "="
+
+        pat .. " " .. key .. " " .. (a pretty: exp)
+      }
+
+    otherwise ->
+      { from = context _?
+
+        with: context as: @keyword do: {
+          initial =
+            if: (e targets head type == @top)
+              then: { "" }
+              else: { (a pretty: e targets head) .. " " }
+
+          rest =
+            (0 ... e names length) (map: { n |
               name = e names (at: n)
               value = a pretty: e targets (at: (n + 1))
 
               (a linked: e as: name keywordfy) .. " " .. value
-            }
+            }) join: " "
 
-            ks join: " "
-          }
-    } in-context
-
-    (if: (context _? == @single || context _? == @keyword)
-      then: { "(" .. initial .. rest .. ")" }
-      else: { initial .. rest })
-      type: "dispatch keyword"
-  } call
+          (if: (from == @single || from == @keyword)
+            then: { "(" .. initial .. rest .. ")" }
+            else: { initial .. rest })
+            type: "dispatch keyword"
+        }
+      } call
+  }
 
 (a: A) pretty-particle: p :=
   if: p values (all?: @(== @none))
