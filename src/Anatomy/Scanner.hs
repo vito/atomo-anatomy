@@ -62,26 +62,10 @@ scan depth num path ss' = do
                 then liftIO (canonicalizePath (p </> fn))
                 else findFile ps fn
             
-    scan' acc (KeywordDispatch ["section"] [st]:ss) = do
-        liftIO (putStrLn ("subsection: " ++ show st))
-
-        sec <- fmap (\s -> s
-            { sectionTitle = Title st Nothing Nothing
-            , sectionParent = Just (sectionID acc)
-            }) $ scan (depth + 1) (length (subSections acc) + 1) "" sb
-
-        liftIO (writeIORef (sectionID sec) sec)
-
-        scan' (acc
-            { sectionBody = sectionBody acc ++
-                [SectionReference (length (subSections acc))]
-            , subSections = subSections acc ++ [sec]
-            }) rest
-      where
-        (sb, rest) = span (\s ->
-            case s of
-                KeywordDispatch ["section"] _ -> False
-                _ -> True) ss
+    scan' acc (KeywordDispatch ["section", "tag"] [s, t]:ss) = do
+        subsection acc s (Just t) ss
+    scan' acc (KeywordDispatch ["section"] [s]:ss) =
+        subsection acc s Nothing ss
     scan' acc (KeywordDispatch ["define"] [sb]:ss) = do
         body <- buildForString sb
 
@@ -106,6 +90,28 @@ scan depth num path ss' = do
             }) ss
     scan' acc (s:ss) =
         scan' (acc { sectionBody = sectionBody acc ++ [s] }) ss
+
+    subsection acc s t ss = do
+        liftIO (putStrLn ("subsection: " ++ show s))
+
+        sec <- fmap (\sec -> sec
+            { sectionTitle = Title s t Nothing
+            , sectionParent = Just (sectionID acc)
+            }) $ scan (depth + 1) (length (subSections acc) + 1) "" sb
+
+        liftIO (writeIORef (sectionID sec) sec)
+
+        scan' (acc
+            { sectionBody = sectionBody acc ++
+                [SectionReference (length (subSections acc))]
+            , subSections = subSections acc ++ [sec]
+            }) rest
+      where
+        (sb, rest) = span (\sec ->
+            case sec of
+                KeywordDispatch ["section"] _ -> False
+                KeywordDispatch ["section", "tag"] _ -> False
+                _ -> True) ss
 
 
 buildForString :: Segment -> VM String

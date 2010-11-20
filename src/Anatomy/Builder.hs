@@ -24,9 +24,6 @@ import Paths_anatomy
 
 build :: Segment -> AVM String
 build (Chunk s) = return s
-build (KeywordDispatch ["section"] [n]) = do
-    sn <- build n
-    return $ "<h4>" ++ sn ++ "</h4>"
 build (KeywordDispatch ns ss) = do
     vs <- forM ss $ \s ->
         case s of
@@ -56,7 +53,6 @@ build (SectionReference n) = do
 
     sec <- gets ((!! n) . subSections)
     flip runAVM sec $ do
-        title <- gets (titleText . sectionTitle)
         depth <- do
             myd <- gets sectionDepth
             mp <- gets sectionParent
@@ -66,14 +62,16 @@ build (SectionReference n) = do
                     pd <- fmap sectionDepth $ liftIO (readIORef p)
                     return (myd - pd)
 
-        t <- build title
+        u <- get >>= buildForString' . tagOrTitle
+        t <- gets (titleText . sectionTitle) >>= buildForString'
         b <- mapM build (sectionBody sec)
 
         let header = 'h' : show (depth + 1)
         return . unlines $
             [ "<div class=\"section\">"
             , "  " ++ concat
-                [ "<" ++ header ++ " class=\"section-header\" id=\"section_" ++ sanitize t ++ "\">"
+                [ "<" ++ header ++ " class=\"section-header\" id=\"section_"
+                    ++ sanitize u ++ "\">"
                 , t
                 , "</" ++ header ++ ">"
                 ]
@@ -86,9 +84,16 @@ build FullTableOfContents =
     liftM printFullTOC (get >>= buildTOC)
 build (InlineDefinition d b) = do
     a <- getAObject
-    thumb <- liftM (fromText . fromString) . lift $ dispatch (keyword ["pretty"] [a, Expression (defThumb d)])
-    pr <- liftM (fromText . fromString) . lift $ dispatch (keyword ["pretty"] [a, Expression (defReturn d)])
-    pcs <- lift $ mapM (\c -> liftM (fromText . fromString) $ dispatch (keyword ["pretty"] [a, Expression c])) (defContracts d)
+
+    thumb <- liftM (fromText . fromString) . lift $
+        dispatch (keyword ["pretty"] [a, Expression (defThumb d)])
+
+    pr <- liftM (fromText . fromString) . lift $
+        dispatch (keyword ["pretty"] [a, Expression (defReturn d)])
+
+    pcs <- lift $ mapM (\c -> liftM (fromText . fromString) $
+        dispatch (keyword ["pretty"] [a, Expression c])) (defContracts d)
+
     body <- maybe (return "") (fmap (++ "\n\n") . build) b
     return . unlines $
         [ "<div class=\"definition\" id=\"" ++ bindingID (defKey d) ++ "\">"
@@ -119,15 +124,20 @@ buildTOC s
 printTOC :: TOCTree -> String
 printTOC t =
     case t of
-        Branch _ _ ss -> "<ol class=\"toc\">" ++ concatMap printTOC' ss ++ "</ol>"
-        _ -> "<ol class=\"toc\">" ++ printTOC' t ++ "</ol>"
+        Branch _ _ ss ->
+            "<ol class=\"toc\">" ++ concatMap printTOC' ss ++ "</ol>"
+        _ ->
+            "<ol class=\"toc\">" ++ printTOC' t ++ "</ol>"
 
 printFullTOC :: TOCTree -> String
 printFullTOC t = "<ol class=\"toc\">" ++ printTOC' t ++ "</ol>"
 
 printTOC' :: TOCTree -> String
-printTOC' (Node u n) = "<li><a href=\"" ++ u ++ "\">" ++ n ++ "</a></li>"
-printTOC' (Branch u n ss) = "<li><a href=\"" ++ u ++ "\">" ++ n ++ "</a><ol>" ++ concatMap printTOC' ss ++ "</ol></li>"
+printTOC' (Node u n) =
+    "<li><a href=\"" ++ u ++ "\">" ++ n ++ "</a></li>"
+printTOC' (Branch u n ss) =
+    "<li><a href=\"" ++ u ++ "\">" ++ n ++ "</a><ol>"
+        ++ concatMap printTOC' ss ++ "</ol></li>"
 
 buildFile :: FilePath -> FilePath -> IO ()
 buildFile fn o = do
@@ -289,24 +299,24 @@ bindingURL s k =
         >>= \u -> return $ trimFragment u ++ "#" ++ bindingID k
 
 sectionURL :: Section -> AVM String
-sectionURL s =
-    case sectionParent s of
-        Nothing -> pageURL
-        Just sr -> do
-            p <- liftIO (readIORef sr)
-            if sectionStyle p == TOC
-                then pageURL
-                else do
-                    st <- build (titleText (sectionTitle s))
-                    purl <- sectionURL p
-                    return (trimFragment purl ++ "#section_" ++ sanitize st)
-  where
-    pageURL = fmap ((<.> "html") . sanitize) $
-        case sectionTitle s of
-            Title { titleTag = Just tag } ->
-                buildForString' tag
-            Title { titleText = text } ->
-                buildForString' text
+sectionURL s@(Section { sectionParent = Nothing }) =
+    pageURL s
+sectionURL s@(Section { sectionParent = Just sr }) = do
+    p <- liftIO (readIORef sr)
+    if sectionStyle p == TOC
+        then pageURL s
+        else do
+            st <- buildForString' (tagOrTitle s)
+            purl <- sectionURL p
+            return (trimFragment purl ++ "#section_" ++ sanitize st)
+
+pageURL :: Section -> AVM String
+pageURL s = fmap ((<.> "html") . sanitize) (buildForString' (tagOrTitle s))
+
+tagOrTitle :: Section -> Segment
+tagOrTitle (Section { sectionTitle = Title { titleTag = Just t } }) =
+    t
+tagOrTitle s = titleText (sectionTitle s)
 
 sanitize :: String -> String
 sanitize "" = ""

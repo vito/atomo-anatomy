@@ -42,12 +42,10 @@ chunk = do
     return (Chunk (c:cs))
 
 keyword :: Parser Segment
-keyword = fmap (debug "keyword") $ do
+keyword = do
     char special
-    dump "got special"
     ks <- many1 . try $ do
         name <- AB.anyIdent
-        dump ("got identifier", name)
         char ':'
         val <- choice
             [ fmap Nested nested
@@ -56,16 +54,17 @@ keyword = fmap (debug "keyword") $ do
                 [ unlexeme AP.pLiteral
 
                 -- arbitrary expr
-                , try $ between (char '(') (char ')') AP.pExpr
+                , try . between (char '(') (char ')') $
+                    AP.pExpr
                 ]
 
             -- operator reference
-            , try $ fmap (\x -> Atomo $ AT.Dispatch Nothing (AT.EKeyword (hash [x]) [x] [AT.ETop Nothing, AT.ETop Nothing])) $
+            , try $ fmap (\x -> Atomo $ AT.Dispatch Nothing (AT.ekeyword [x] [])) $
                 between (char '(') (char ')')
-                    (many1 (satisfy (\c -> c == ':' || AB.isOpLetter c)))
+                    (many1 (satisfy AB.isOpLetter))
 
             -- keyword reference
-            , try $ fmap (\ks -> Atomo $ AT.Dispatch Nothing (AT.EKeyword (hash ks) ks (replicate (length ks + 1) (AT.ETop Nothing)))) $
+            , try $ fmap (\ks -> Atomo $ AT.Dispatch Nothing (AT.ekeyword ks [])) $
                 between (char '(') (char ')')
                     (many1 (AB.identifier >>= \n -> char ':' >> return n))
 
@@ -98,7 +97,7 @@ single = fmap (debug "single") $ do
 atomo :: Parser Segment
 atomo = fmap (debug "atomo") $ do
     char special
-    fmap Atomo (between (char '(') (char ')') AP.pExpr)
+    fmap Atomo (between (char '(') (char ')') AP.pExpr >>= AP.macroExpand)
 
 parser :: Parser [Segment]
 parser = do
@@ -116,22 +115,25 @@ parseFile fn = liftIO (readFile fn) >>= AP.continue parser fn
 
 defParser :: Parser Definition
 defParser = do
-    thumb <- try (fmap toDispatch (try AP.pSet <|> AP.pDefine)) <|> AP.pDispatch
+    thumb <- AP.pDispatch
+
     AB.whiteSpace
-    cs <- many (try $ AB.symbol "|" >> AP.pDispatch >>= \d -> AB.whiteSpace >> return d)
+
+    cs <- many . try $ do
+        AB.symbol "|"
+        d <- AP.pDispatch
+        AB.whiteSpace
+        return d
+
     AB.whiteSpace
+
     ret <- AB.symbol ">" >> AP.pDispatch
+
     return Definition
         { defThumb = thumb
         , defContracts = cs
         , defReturn = ret
         }
-  where
-    toDispatch (AT.Define { AT.eLocation = l, AT.ePattern = p, AT.eExpr = e }) =
-        AT.Dispatch l (AT.EKeyword (hash [":="]) [":="] [AT.Primitive l (AT.Pattern p), e])
-    toDispatch (AT.Set { AT.eLocation = l, AT.ePattern = p, AT.eExpr = e }) =
-        AT.Dispatch l (AT.EKeyword (hash ["="]) ["="] [AT.Primitive l (AT.Pattern p), e])
-    toDispatch e = error $ "no toDispatch for: " ++ show e
 
 -- restore the whitespace that a lexeme parser nom'd up
 unlexeme :: Parser a -> Parser a
