@@ -139,7 +139,8 @@ pre a:hover {
     color: #0086D2;
     font-weight: bold;
 }
-.boolean, .top {
+.keyword {
+    color: #000;
     font-weight: bold;
 }
 .integer {
@@ -173,6 +174,10 @@ pre a:hover {
 }
 .dispatch.single > a {
     font-style: normal;
+}
+.dispatch.keyword {
+    color: inherit;
+    font-weight: inherit;
 }
 pre .dispatch.single {
     font-style: normal;
