@@ -45,6 +45,17 @@ load = do
                     runAVM' (findBinding (SingleKey n) st) st
                 Dispatch { eMessage = EKeyword { emNames = ns } } ->
                     runAVM' (findBinding (KeywordKey ns) st) st
+
+                EParticle { eParticle = EPMSingle n } ->
+                    runAVM' (findBinding (SingleKey n) st) st
+                EParticle { eParticle = EPMKeyword ns _ } ->
+                    runAVM' (findBinding (KeywordKey ns) st) st
+
+                Primitive { eValue = Particle (PMSingle n) } ->
+                    runAVM' (findBinding (SingleKey n) st) st
+                Primitive { eValue = Particle (PMKeyword ns _) } ->
+                    runAVM' (findBinding (KeywordKey ns) st) st
+
                 _ -> raise ["no-url-for"] [Expression ae]
 
         case find of
