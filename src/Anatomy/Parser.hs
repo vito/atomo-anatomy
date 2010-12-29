@@ -58,16 +58,6 @@ keyword = do
                     pExpr
                 ]
 
-            -- operator reference
-            , try $ fmap (\x -> Atomo $ AT.Dispatch Nothing (AT.keyword [x] [])) $
-                between (char '(') (char ')')
-                    (many1 (satisfy AB.isOpLetter))
-
-            -- keyword reference
-            , try $ fmap (\ks -> Atomo $ AT.Dispatch Nothing (AT.keyword ks [])) $
-                between (char '(') (char ')')
-                    (many1 (AB.identifier >>= \n -> char ':' >> return n))
-
             -- single reference; trailing punctuation is ignored
             , do
                 ident <- AB.anyIdent
