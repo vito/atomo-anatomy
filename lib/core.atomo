@@ -23,49 +23,38 @@ A link: (name: String) to: (url: String) :=
   name in-tag: ("a href=\"" .. url .. "\" class=\"external\"")
 
 -- pretty-printing a single expr, inline
-(a: A) atomo: (e: Expression) :=
-  (a pretty: e) in-tag: "code"
+(a: A) hl: (s: String) :=
+  (a highlight: s) in-tag: "code"
 
--- pretty-printing a single expr, block
-(a: A) atomo-line: (e: Expression) :=
-  (a pretty: e) in-tag: "pre class=\"verbatim\""
-
--- pretty-print a block of expressions
-(a: A) atomo-segment: (e: Expression) :=
-  (a evaluate: e) contents (map: { c | a pretty: c }) (join: "\n")
-    in-tag: "pre class=\"verbatim\""
-
--- example code (unevaluated)
-(a: A) example-segment: (e: Expression) :=
-  ("<em>Example:</em>" .. (a atomo-segment: e))
-    in-tag: "div class=\"example\""
-
--- pretty-print a block of Atomo code, multiline
-(a: A) atomo-block: (e: Expression) :=
-  a atomo-block: (a evaluate: e)
-(a: A) atomo-block: (b: Block) :=
-  with: multiline-pretty? as: True do: {
-    b contents (map: { e | a atomo-line: e }) join
-  }
+-- pretty-printing a block of code
+(a: A) atomo: (s: String) on: (t: Expression) :=
+  a atomo: s on: (a evaluate: t)
+(a: A) atomo: (s: String) on: env :=
+  { do-input: s in: env
+    a atomo: s
+  } call
 
 -- example interaction session
-(a: A) example: (e: Expression) :=
-  ("<em>Example:</em>" .. (a interaction: e))
+(a: A) example: (s: String) :=
+  ("<em>Example:</em>" .. (a interaction: s))
+    in-tag: "div class=\"example\""
+
+-- example interaction session
+(a: A) example-segment: (s: String) :=
+  ("<em>Example:</em>" .. (a atomo: s))
     in-tag: "div class=\"example\""
 
 -- a REPL simulator
-(a: A) interaction: (e: Expression) :=
-  a interaction: (a evaluate: e) on: Lobby clone
-(a: A) interaction: (b: Block) :=
-  a interaction: b on: Lobby clone
+(a: A) interaction: (s: String) :=
+  a interaction: s on: Lobby clone
 
 -- a REPL simulator locked into an environment
-(a: A) interaction: (e: Expression) on: (t: Expression) :=
-  a interaction: (a evaluate: e) on: (a evaluate: t)
-(a: A) interaction: (b: Block) on: env :=
-  { ("interaction: " .. b show) print
-
-    log =  b contents (map: { e |
+(a: A) interaction: (s: String) on: (t: Expression) :=
+  a interaction: s on: (a evaluate: t)
+(a: A) interaction: (s: String) on: env :=
+  { ("interaction: " .. s show) print
+  
+    log = s lines (map: { e |
       output = String-Port new do: {
         display: s :=
           { output contents = output contents .. s (as: String) escape
@@ -76,7 +65,7 @@ A link: (name: String) to: (url: String) :=
       error = String-Port new do: {
         display: s :=
           { error contents = error contents .. (s as: String)
-            output contents = output contents .. (s (as: String) escape type: "error-output")
+            output contents = output contents .. (s (as: String) escape type: "gr")
             s
           } call
       }
@@ -87,16 +76,16 @@ A link: (name: String) to: (url: String) :=
           *error-output* -> error
         ] do: {
           with-output-to: output do: {
-            a pretty: (env evaluate: e expand)
+            a highlight: (do-input: e in: env) show
           }
         }
       } catch: { e |
-        (a pretty: e) type: "error"
+        ("ERROR: " .. (a highlight: e show)) type: "gr"
       }
 
       [ "&gt;" type: "caret"
         " "
-        a pretty: e
+        a highlight: e
         "\n"
         output contents
         res
@@ -106,3 +95,16 @@ A link: (name: String) to: (url: String) :=
 
     log in-tag: "pre class=\"interaction\""
   } call
+
+evaluate-all: [] in: _ := error: @no-expressions
+evaluate-all: [e] in: t := t evaluate: e
+evaluate-all: (e . es) in: t :=
+  { t evaluate: e
+    evaluate-all: es in: t
+  } call
+
+do-input: (s: String) in: env :=
+  s parse-expressions match: {
+    [] -> @undefined
+    es -> evaluate-all: (es map: @expand) in: env
+  }

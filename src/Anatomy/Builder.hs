@@ -144,7 +144,10 @@ printTOC' (Branch u n ss) =
 buildFile :: FilePath -> FilePath -> IO ()
 buildFile fn o = do
     css <- getDataFileName "lib/anatomy.css" >>= readFile
+    hl <- getDataFileName "lib/highlight.css" >>= readFile
+
     writeFile (o </> "anatomy.css") css
+    writeFile (o </> "highlight.css") hl
 
     path <- fmap takeDirectory $ canonicalizePath fn
 

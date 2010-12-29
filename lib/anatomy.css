@@ -104,7 +104,7 @@ dd {
     margin-bottom: 1em;
 }
 
-.verbatim, .interaction {
+.verbatim, .interaction, .highlight {
     margin: 0 1em 1em;
 }
 
@@ -129,62 +129,6 @@ pre a:hover {
 .interaction .caret {
     font-weight: bold;
     color: #999;
-}
-
-.list {
-    color: #000;
-    font-weight: normal;
-}
-.string {
-    color: #0086D2;
-    font-weight: bold;
-}
-.keyword {
-    color: #000;
-    font-weight: bold;
-}
-.integer {
-    color: #0086D2;
-    font-weight: bold;
-}
-.char {
-    color: #D20086;
-    font-weight: bold;
-}
-.double {
-    color: #A640D2;
-    font-weight: bold;
-}
-.rational {
-    color: #26C052;
-    font-weight: bold;
-}
-.particle {
-    color: #56B200;
-    font-weight: bold;
-}
-.internal {
-    font-style: italic;
-    color: #333;
-}
-.dispatch.single {
-    font-style: italic;
-    color: #000;
-    font-weight: normal;
-}
-.dispatch.single > a {
-    font-style: normal;
-}
-.dispatch.keyword {
-    color: inherit;
-    font-weight: inherit;
-}
-pre .dispatch.single {
-    font-style: normal;
-}
-pre .dispatch.single > a {
-    color: #000;
-    font-weight: bold;
 }
 
 .error-output {

@@ -13,6 +13,7 @@ build-type:          Simple
 cabal-version:       >= 1.6
 
 data-files:          lib/anatomy.css
+                     lib/highlight.css
                      lib/*.atomo
 
 source-repository   head
@@ -24,17 +25,21 @@ library
 
   build-depends:
     base >= 4 && < 5,
+    blaze-html,
+    bytestring,
     atomo >= 0.3,
     containers,
     directory,
     filepath,
     hashable,
     haskeline,
+    highlighter,
     mtl,
     parsec >= 3.0.0,
     pretty,
     pretty-show,
     tagsoup,
+    text,
     time,
     vector
 
@@ -60,15 +65,19 @@ executable anatomy
   build-depends:
     atomo >= 0.3,
     base >= 4,
+    blaze-html,
+    bytestring,
     containers,
     directory,
     filepath,
     hashable,
     haskeline,
+    highlighter,
     mtl,
     parsec >= 3.0.0,
     pretty,
     pretty-show,
     tagsoup,
+    text,
     time,
     vector
