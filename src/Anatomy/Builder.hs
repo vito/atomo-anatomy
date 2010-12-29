@@ -144,6 +144,8 @@ printTOC' (Branch u n ss) =
 
 buildFile :: FilePath -> FilePath -> IO ()
 buildFile fn o = do
+    createDirectoryIfMissing True o
+
     css <- getDataFileName "lib/anatomy.css" >>= readFile
     hl <- getDataFileName "lib/highlight.css" >>= readFile
 
