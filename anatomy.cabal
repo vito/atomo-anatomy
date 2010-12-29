@@ -1,5 +1,5 @@
 name:                anatomy
-version:             0.1
+version:             0.3
 synopsis:            Anatomy: Atomo documentation system
 homepage:            http://darcsden.com/alex/anatomy
 license:             BSD3
@@ -21,7 +21,7 @@ library
   extensions:         PackageImports
 
   build-depends:
-    atomo,
+    atomo >= 0.3,
     base >= 4,
     containers,
     directory,
@@ -59,7 +59,7 @@ executable anatomy
   extensions:         PackageImports
 
   build-depends:
-    atomo >= 0.2.2.1,
+    atomo >= 0.3,
     base >= 4,
     containers,
     directory,

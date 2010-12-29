@@ -11,6 +11,7 @@ import Anatomy.Types
 import Atomo.Environment
 import Atomo.Helpers
 import Atomo.Types
+import Atomo.Parser.Expand (macroExpand)
 
 
 -- scan through everything and build up the initial state for generation
@@ -18,7 +19,7 @@ scan :: Int -> Int -> FilePath -> [Segment] -> VM Section
 scan depth num path ss' = do
     a <- here "A" >>= dispatch . single "clone"
     env <- here "Lobby" >>= dispatch . single "clone"
-    defineOn a (Slot (psingle "environment" PThis) env)
+    defineOn a (Slot (single "environment" PThis) env)
 
     sec <- liftIO . newSection $ \s -> s
         { sectionDepth = depth
@@ -116,7 +117,7 @@ scan depth num path ss' = do
 
 
 buildForString :: Segment -> VM String
-buildForString (Atomo e) = liftM (fromText . fromString) (eval e)
+buildForString (Atomo e) = liftM (fromText . fromString) (macroExpand e >>= eval)
 buildForString (Chunk s) = return s -- TODO: escaping
 buildForString (Nested ns) = fmap concat (mapM buildForString ns)
 buildForString x = error $ "cannot be built into a string: " ++ show x

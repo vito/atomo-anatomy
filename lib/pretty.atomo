@@ -1,26 +1,26 @@
 -- root URL for links
-docs-root = Parameter new: ""
+define: docs-root as: ""
 
 -- current pretty-printer indentation level
-indent-level = Parameter new: 0
+define: indent-level as: 0
 
 -- allow multiline pretty-printing
-multiline-pretty? = Parameter new: False
+define: multiline-pretty? as: False
 
 -- context for a pretty-print
-context = Parameter new: @top
+define: context as: @top
 
 -- output as values? (i.e. <expression 1 + 1> instead of 1 + 1)
-value-output? = Parameter new: False
+define: value-output? as: False
 
 
 -- indent s up to the current indentation level
 indented: (s: String) :=
-  ($  repeat: (indent-level _? * 2)) .. s
+  ($  repeat: (indent-level * 2)) .. s
 
 -- an empty line, followed by (indentation - 1) indentation
 unindent :=
-  "\n" .. ($  repeat: ((indent-level _? - 1) * 2))
+  "\n" .. ($  repeat: ((indent-level - 1) * 2))
 
 
 -- default pretty-printer; just do @show
@@ -42,7 +42,7 @@ A pretty: (c: String) := c show escape type: "string"
 
 -- pattern pretty-printing; lop off "<pattern [...]>" normally
 A pretty: (p: Pattern) :=
-  if: value-output? _?
+  if: value-output?
     then: { p show escape type: "internal" }
     else: {
       p show (drop: "<pattern " length) init escape
@@ -52,9 +52,6 @@ A pretty: (p: Pattern) :=
 -- pretty-print both sides of an Association
 (a: A) pretty: (as: Association) :=
   (a pretty: as from) .. " -> " escape .. (a pretty: as to)
-
-(a: A) pretty: (p: Parameter) :=
-  "<" escape .. (a pretty: p _?) .. ">" escape
 
 (a: A) pretty: (p: Particle) :=
   p type match: {
@@ -69,14 +66,14 @@ A pretty: (p: Pattern) :=
   with: [
     context -> @top
     value-output? -> False
-    indent-level -> indent-level _? + 1
+    indent-level -> indent-level + 1
   ] do: {
     arguments = b arguments (map: { p | a pretty: p }) (join: " ")
 
     pretty-contents = b contents (map: { e | a pretty: e })
 
     contents =
-      if: multiline-pretty? _?
+      if: multiline-pretty?
         then: {
           exprs = pretty-contents (map: { c | "\n" .. (indented: c) }) join strip-end
           exprs .. unindent
@@ -112,10 +109,10 @@ A pretty: (p: Pattern) :=
         ] do: {
           pat = a pretty: e pattern
 
-          if: multiline-pretty? _?
+          if: multiline-pretty?
             then: {
               with: [
-                indent-level -> indent-level _? + 1
+                indent-level -> indent-level + 1
                 context -> @define
               ] do: {
                 expr = a pretty: e expression
@@ -205,7 +202,7 @@ A pretty: (p: Pattern) :=
     }
 
     condition: {
-      value-output? _? not -> pretty
+      value-output? not -> pretty
 
       e needs-parens? ->
         "'(" .. pretty .. ")"
@@ -248,7 +245,7 @@ A pretty: (p: Pattern) :=
         exp = e targets (at: 1)
         key = a linked: e as: ":="
 
-        if: multiline-pretty? _?
+        if: multiline-pretty?
           then: {
             modify: indent-level as: @(+ 1) do: {
               expr = a pretty: exp
@@ -269,7 +266,7 @@ A pretty: (p: Pattern) :=
       }
 
     otherwise ->
-      { from = context _?
+      { from = context
 
         with: context as: @keyword do: {
           initial =
@@ -330,6 +327,6 @@ A pretty: (p: Pattern) :=
   a (url-for: e) match: {
     @none -> t escape
     @(ok: u) ->
-      t escape in-tag: ("a href=\"" .. docs-root _? .. u .. "\"")
+      t escape in-tag: ("a href=\"" .. docs-root .. u .. "\"")
   }
 

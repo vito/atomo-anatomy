@@ -2,7 +2,6 @@ module Anatomy.Parser (parseFile, parseDefinition) where
 
 import Control.Monad.Error
 import Data.Char (isSpace)
-import Data.Hashable (hash)
 import Data.List (intercalate)
 import Text.Parsec hiding (parse)
 import Atomo.Parser (continue)
@@ -60,12 +59,12 @@ keyword = do
                 ]
 
             -- operator reference
-            , try $ fmap (\x -> Atomo $ AT.Dispatch Nothing (AT.ekeyword [x] [])) $
+            , try $ fmap (\x -> Atomo $ AT.Dispatch Nothing (AT.keyword [x] [])) $
                 between (char '(') (char ')')
                     (many1 (satisfy AB.isOpLetter))
 
             -- keyword reference
-            , try $ fmap (\ks -> Atomo $ AT.Dispatch Nothing (AT.ekeyword ks [])) $
+            , try $ fmap (\ks -> Atomo $ AT.Dispatch Nothing (AT.keyword ks [])) $
                 between (char '(') (char ')')
                     (many1 (AB.identifier >>= \n -> char ':' >> return n))
 
@@ -78,7 +77,7 @@ keyword = do
 
                 getInput >>= setInput . (punct ++)
 
-                return . Atomo . AT.Dispatch Nothing $ AT.ESingle (hash sane) sane (AT.ETop Nothing)
+                return . Atomo . AT.Dispatch Nothing $ AT.single sane (AT.ETop Nothing)
             ]
         dump ("got value", val)
         return (name, val)
@@ -98,7 +97,7 @@ single = fmap (debug "single") $ do
 atomo :: Parser Segment
 atomo = fmap (debug "atomo") $ do
     char special
-    fmap Atomo (between (char '(') (char ')') pExpr >>= macroExpand)
+    fmap Atomo (between (char '(') (char ')') pExpr)
 
 parser :: Parser [Segment]
 parser = do
@@ -112,7 +111,15 @@ parser = do
     return ss
 
 parseFile :: String -> AT.VM [Segment]
-parseFile fn = liftIO (readFile fn) >>= continue parser fn
+parseFile fn = liftIO (readFile fn) >>= continue parser fn >>= mapM expandSegment
+
+expandSegment :: Segment -> AT.VM Segment
+expandSegment (Atomo e) = liftM Atomo (macroExpand e)
+expandSegment (Nested ss) =
+  liftM Nested (mapM expandSegment ss)
+expandSegment (InlineDefinition d (Just s)) =
+  liftM (InlineDefinition d . Just) (expandSegment s)
+expandSegment s = return s
 
 defParser :: Parser Definition
 defParser = do

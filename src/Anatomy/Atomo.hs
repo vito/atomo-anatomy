@@ -41,14 +41,14 @@ load = do
 
         find <-
             case ae of
-                Dispatch { eMessage = ESingle { emName = n } } ->
+                Dispatch { eMessage = Single { mName = n } } ->
                     runAVM' (findBinding (SingleKey n) st) st
-                Dispatch { eMessage = EKeyword { emNames = ns } } ->
+                Dispatch { eMessage = Keyword { mNames = ns } } ->
                     runAVM' (findBinding (KeywordKey ns) st) st
 
-                EParticle { eParticle = EPMSingle n } ->
+                EParticle { eParticle = PMSingle n } ->
                     runAVM' (findBinding (SingleKey n) st) st
-                EParticle { eParticle = EPMKeyword ns _ } ->
+                EParticle { eParticle = PMKeyword ns _ } ->
                     runAVM' (findBinding (KeywordKey ns) st) st
 
                 Primitive { eValue = Particle (PMSingle n) } ->

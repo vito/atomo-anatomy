@@ -78,8 +78,8 @@ data TOCTree
 defKey :: Definition -> BindingKey
 defKey d =
     case defThumb d of
-        AT.Dispatch { AT.eMessage = AT.EKeyword { AT.emNames = ns } } -> KeywordKey ns
-        AT.Dispatch { AT.eMessage = AT.ESingle { AT.emName = n } } -> SingleKey n
+        AT.Dispatch { AT.eMessage = AT.Keyword { AT.mNames = ns } } -> KeywordKey ns
+        AT.Dispatch { AT.eMessage = AT.Single { AT.mName = n } } -> SingleKey n
         _ -> error $ "no defKey for: " ++ show (defThumb d)
 
 bindingID :: BindingKey -> String

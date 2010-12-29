@@ -86,7 +86,7 @@ A link: (name: String) to: (url: String) :=
           value-output? -> True
           *error-output* -> error
         ] do: {
-          with-all-output-to: output do: {
+          with-output-to: output do: {
             a pretty: (env evaluate: e expand)
           }
         }

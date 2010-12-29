@@ -1,6 +1,6 @@
 module Anatomy.Builder where
 
-import "monads-fd" Control.Monad.State
+import Control.Monad.State
 import Data.Char
 import Data.Dynamic
 import Data.IORef
@@ -18,6 +18,7 @@ import Atomo.Environment
 import Atomo.Run
 import Atomo.PrettyVM
 import Atomo.Types
+import Atomo.Parser.Expand (macroExpand)
 
 import Paths_anatomy
 
@@ -38,9 +39,10 @@ build (SingleDispatch n) = do
     return (fromText $ fromString res)
 build (Atomo e) = do
     env <- gets sectionA >>= lift . dispatch . single "environment"
-    r <- lift (liftM show $ withTop env (eval e) >>= prettyVM)
+    e' <- lift (macroExpand e)
+    r <- lift (liftM show $ withTop env (eval e') >>= prettyVM)
 
-    case e of
+    case e' of
         Set {} -> return ""
         Define {} -> return ""
         _ -> return r
@@ -226,7 +228,7 @@ getAObject = do
     s <- get
 
     lift $ defineOn (sectionA s)
-        (Slot (psingle "state" PThis) (Haskell (toDyn s)))
+        (Slot (single "state" PThis) (Haskell (toDyn s)))
 
     return (sectionA s)
 
@@ -329,7 +331,7 @@ sanitize (s:ss)
     | otherwise = '_' : sanitize ss
 
 buildForString' :: Segment -> AVM String
-buildForString' (Atomo e) = lift (liftM (fromText . fromString) (eval e))
+buildForString' (Atomo e) = lift (liftM (fromText . fromString) (macroExpand e >>= eval))
 buildForString' x = build x
 
 trimFragment :: String -> String
