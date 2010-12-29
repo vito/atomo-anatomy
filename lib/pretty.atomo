@@ -34,7 +34,7 @@ A pretty: o :=
 
 -- primitive pretty-printers
 A pretty: (c: Char) := c show escape type: "char"
-A pretty: (b: Boolean) := b show escape type: "keyword boolean"
+A pretty: (b: Boolean) := b show escape type: "reserved boolean"
 A pretty: (d: Double) := d show escape type: "number double"
 A pretty: (i: Integer) := i show escape type: "number integer"
 A pretty: (r: Rational) := r show escape type: "number rational"
@@ -55,12 +55,12 @@ A pretty: (p: Pattern) :=
 
 (a: A) pretty: (p: Particle) :=
   p type match: {
-    @single -> ("@" .. p name escape (type: "name")) type: "particle"
+    @single -> ("@" (type: "punctuation at") .. p name escape (type: "name")) type: "particle"
     @keyword -> a pretty-particle: p
   }
 
 (a: A) pretty: (l: List) :=
-  ("[" .. l (map: { l | a pretty: l }) (join: ", ") .. "]") type: "list"
+  ("[" (type: "punctuation brackets") .. l (map: { l | a pretty: l }) (join: ("," (type: "punctuation comma") .. " ")) .. "]" (type: "punctuation brackets")) type: "list"
 
 (a: A) pretty: (b: Block) :=
   with: [
@@ -78,20 +78,20 @@ A pretty: (p: Pattern) :=
           exprs = pretty-contents (map: { c | "\n" .. (indented: c) }) join strip-end
           exprs .. unindent
         }
-        else: { " " .. pretty-contents (join: "; ") .. " " }
+        else: { " " .. pretty-contents (join: (";" (type: "punctuation semicolon") .. " ")) .. " " }
 
     condition: {
       contents strip empty? && b arguments empty? ->
-        "{ }" type: "block"
+        ("{" (type: "punctuation braces") .. " " .. "}" (type: "punctuation braces")) type: "block"
 
       contents strip empty? ->
-        ("{ " .. arguments .. " | }") type: "block"
+        ("{" (type: "punctuation braces") .. " " .. arguments .. " " .. "|" (type: "punctuation pipe") .. " " .. "}" (type: "punctuation braces")) type: "block"
 
       b arguments empty? ->
-        ("{" .. contents .. "}") type: "block"
+        ("{" (type: "punctuation braces") .. contents .. "}" (type: "punctuation braces")) type: "block"
 
       otherwise ->
-        ("{ " .. arguments .. " |" .. contents .. "}") type: "block"
+        ("{" (type: "punctuation braces") .. " " .. arguments .. " " .. "|" (type: "punctuation pipe") .. contents .. "}" (type: "punctuation braces")) type: "block"
     }
   }
 
@@ -116,13 +116,18 @@ A pretty: (p: Pattern) :=
                 context -> @define
               ] do: {
                 expr = a pretty: e expression
-                pat .. " :=\n" .. (indented: expr) .. "\n"
+                [ pat .. " " .. ":=" (type: "keyword operator")
+                  indented: expr
+                ] unlnes
               }
             }
             else: {
               with: context as: @define do: {
                 expr = a pretty: e expression
-                pat .. " := " .. expr
+                [ pat
+                  ":=" type: "keyword operator"
+                  expr
+                ] unwords
               }
             }
         }
@@ -132,7 +137,10 @@ A pretty: (p: Pattern) :=
           value-output? -> False
           context -> @set
         ] do: {
-          (a pretty: e pattern) .. " = " .. (a pretty: e expression)
+          [ a pretty: e pattern
+            "=" type: "keyword operator"
+            a pretty: e expression
+          ] unwords
         }
 
       @list ->
@@ -140,7 +148,7 @@ A pretty: (p: Pattern) :=
           value-output? -> False
           context -> @list
         ] do: {
-          "[" .. e contents (map: { l | a pretty: l }) (join: ", ") .. "]"
+          "[" (type: "puncuation brackets") .. e contents (map: { l | a pretty: l }) (join: ("," (type: "punctuation comma") .. " ")) .. "]" (type: "punctuation brackets")
         }
 
       @(particle: @single) -> a pretty: (a evaluate: e)
@@ -160,16 +168,35 @@ A pretty: (p: Pattern) :=
           a pretty: (a evaluate: e)
         }
 
-      @top -> "this" type: "keyword top"
+      @top -> "this" type: "reserved top"
 
       @macro ->
-        [ "macro" type: "keyword macro"
-          "(" .. (a pretty: e pattern) .. ")"
-          a pretty: e expression
-        ] unwords
+        if: multiline-pretty?
+          then: {
+            [ [ "macro" type: "reserved macro"
+                " "
+                "(" type: "punctuation parentheses"
+                a pretty: e pattern
+                ")" type: "punctuation parentheses"
+              ] join
+
+              modify: indent-level as: @(+ 1) do: {
+                indented: (a pretty: e expression)
+              }
+            ] unlines
+          }
+          else: {
+            [ "macro" type: "reserved macro"
+              [ "(" type: "punctuation parentheses"
+                a pretty: e pattern
+                ")" type: "punctuation parentheses"
+              ] join
+              a pretty: e expression
+            ] unwords
+          }
 
       @operator ->
-        [ "operator" type: "keyword operator"
+        [ "operator" type: "reserved operator"
           e associativity name
           a pretty: e precedence
           e operators
@@ -178,7 +205,7 @@ A pretty: (p: Pattern) :=
         ] unwords
 
       @for-macro ->
-        [ "for-macro" type: "keyword for-macro"
+        [ "for-macro" type: "reserved for-macro"
           a pretty: e expression
         ] unwords
 
@@ -187,7 +214,11 @@ A pretty: (p: Pattern) :=
           value-output? -> False
           context -> @quote
         ] do: {
-          "`" .. (a pretty-segment: e expression)
+          [ "`" type: "quote-token"
+            modify: indent-level as: @(+ 1) do: {
+              a pretty-segment: e expression
+            }
+          ] join type: "backquote"
         }
 
       @unquote ->
@@ -195,19 +226,31 @@ A pretty: (p: Pattern) :=
           value-output? -> False
           context -> @unquote
         ] do: {
-          "~" .. (a pretty-segment: e expression)
+          [ "~" type: "quote-token"
+            modify: indent-level as: @(+ 1) do: {
+              a pretty-segment: e expression
+            }
+          ] join type: "unquote"
         }
 
-      x -> e show (drop: 2) init escape -- remove '( and )
+      x ->
+        -- indent for '(
+        modify: indent-level as: @(+ 1) do: {
+          e show (drop: 2) init escape -- remove '( and )
+        }
     }
 
     condition: {
       value-output? not -> pretty
 
       e needs-parens? ->
-        "'(" .. pretty .. ")"
+        [ "'" type: "quote-token"
+          "(" type: "punctuation parentheses"
+          pretty
+          ")" type: "punctuation parentheses"
+        ] join type: "quote"
 
-      otherwise -> "'" .. pretty
+      otherwise -> ("'" (type: "quote-token") .. pretty) type: "quote"
     }
   } call
 
@@ -221,12 +264,17 @@ A pretty: (p: Pattern) :=
 
 (a: A) pretty-segment: (e: Expression) :=
   if: e needs-parens?
-    then: { "(" .. (a pretty: e) .. ")" }
+    then: { "(" (type: "punctuation parentheses") .. (a pretty: e) .. ")" (type: "punctuation parentheses") }
     else: { a pretty: e }
 
 (a: A) pretty-dispatch: e type: @single :=
   with: context as: @single do: {
-    msg = (a linked: e as: e name) type: "dispatch single"
+    type =
+      if: e name head upper?
+        then: { "dispatch single special" }
+        else: { "dispatch single" }
+
+    msg = (a linked: e as: e name) type: type
 
     if: (e target type == @top)
       then: { msg }
@@ -243,13 +291,13 @@ A pretty: (p: Pattern) :=
       with: context as: @define do: {
         pat = a pretty: e targets head
         exp = e targets (at: 1)
-        key = a linked: e as: ":="
+        key = (a linked: e as: ":=") type: "keyword operator"
 
         if: multiline-pretty?
           then: {
             modify: indent-level as: @(+ 1) do: {
               expr = a pretty: exp
-              pat .. " " .. key .. "\n" .. (indented: expr) .. "\n"
+              pat .. " " .. key .. "\n" .. (indented: expr) -- .. "\n"
             }
           } else: {
             pat .. " " .. key .. " " .. (a pretty: exp)
@@ -260,7 +308,7 @@ A pretty: (p: Pattern) :=
       with: context as: @set do: {
         pat = a pretty: e targets head
         exp = e targets (at: 1)
-        key = a linked: e as: "="
+        key = (a linked: e as: "=") type: "keyword operator"
 
         pat .. " " .. key .. " " .. (a pretty: exp)
       }
@@ -278,14 +326,18 @@ A pretty: (p: Pattern) :=
             (0 ... e names length) (map: { n |
               name = e names (at: n)
               value = a pretty: e targets (at: (n + 1))
+              type =
+                if: name operator?
+                  then: { "keyword operator" }
+                  else: { "keyword" }
 
-              (a linked: e as: name keywordfy) .. " " .. value
+              (a linked: e as: name keywordfy) (type: type) .. " " .. value
             }) join: " "
 
           (if: (from == @single || from == @keyword)
-            then: { "(" .. initial .. rest .. ")" }
+            then: { "(" (type: "punctuation parentheses") .. initial .. rest .. ")" (type: "punctuation parentheses") }
             else: { initial .. rest })
-            type: "dispatch keyword"
+            type: "dispatch"
         }
       } call
   }
