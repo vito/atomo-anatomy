@@ -19,6 +19,8 @@ data Style
     = None
     | TOC
     | Unnumbered
+    | Annotated
+    | Class String
     | Styles [Style]
     deriving (Eq, Show, Typeable)
 
@@ -74,6 +76,26 @@ data TOCTree
     = Node String String
     | Branch String String [TOCTree]
     deriving Show
+
+styleToClass :: Style -> String
+styleToClass (Class s) = s
+styleToClass TOC = "table-of-contents"
+styleToClass Unnumbered = "unnumbered"
+styleToClass Annotated = "annotated"
+styleToClass None = "normal"
+styleToClass (Styles ss) = unwords (map styleToClass ss)
+
+addStyle :: Style -> Style -> Style
+addStyle a None = a
+addStyle (Styles a) (Styles b) = Styles (a ++ b)
+addStyle a (Styles b) = Styles (a:b)
+addStyle (Styles a) b = Styles (a ++ [b])
+addStyle a b = Styles [a, b]
+
+styleMatch :: Style -> Style -> Bool
+styleMatch a b | a == b = True
+styleMatch a (Styles b) = any (styleMatch a) b
+styleMatch _ _ = False
 
 defKey :: Definition -> BindingKey
 defKey d =

@@ -16,6 +16,19 @@ A item: s is: v := (s in-tag: "dt") .. (v in-tag: "dd")
 A verbatim: (s: String) :=
   s escape in-tag: "pre class=\"verbatim\""
 
+-- annotated source code
+(a: A) heading: (h: String) :=
+  "<tr><th class=\"prose\"><h1>" .. h .. "</h1></th><th class=\"code\"></th></tr>"
+
+(a: A) row: (s: String) :=
+  "<tr><td class=\"prose\">" .. s .. "</td><td class=\"code\"></td></tr>"
+
+(a: A) row: (s: String) is: (c: String) :=
+  "<tr><td class=\"prose\">" .. s .. "</td><td class=\"code\">" .. (a atomo: c) .. "</td></tr>"
+
+(a: A) row: (s: String) is: (c: String) on: target :=
+  "<tr><td class=\"prose\">" .. s .. "</td><td class=\"code\">" .. (a atomo: c on: target) .. "</td></tr>"
+
 -- external link
 (a: A) link: name to: (url: Expression) := a link: name to: (a evaluate: url)
 (a: A) link: (name: Expression) to: url := a link: (a evaluate: name) to: url

@@ -4,6 +4,7 @@ import Control.Monad.State
 import Data.Char
 import Data.Dynamic
 import Data.IORef
+import Data.Maybe (isJust)
 import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup
@@ -49,7 +50,7 @@ build (Atomo e) = do
 build (Nested ss) = fmap concat $ mapM build ss
 build (SectionReference n) = do
     style <- gets sectionStyle
-    if style == TOC
+    if styleMatch TOC style
         then return ""
         else do
 
@@ -172,7 +173,7 @@ buildDocument o = do
 
     liftIO . print . titleText $ sectionTitle s
 
-    when (sectionStyle s == TOC) $ do
+    when (styleMatch TOC $ sectionStyle s) $ do
         liftIO (putStrLn "building subsections first for table of contents")
         mapM_ (runAVM (buildDocument o)) (subSections s)
 
@@ -197,34 +198,56 @@ buildDocument o = do
     fn <- sectionURL s
     liftIO (putStrLn fn)
 
-    liftIO . writeFile (o </> fn) $
-        format toc title body parent
+    let showTOC = isJust parent || not (null (subSections s))
+        classes | showTOC = "with-sidebar " ++ styleToClass (sectionStyle s)
+                | otherwise = styleToClass (sectionStyle s)
 
-    return (particle "done")
-  where
-    format toc t b mp = unlines
+    liftIO . writeFile (o </> fn) . unlines $
         [ "<!DOCTYPE html>"
         , "<html>"
         , "  <head>"
         , "    <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />"
-        , "    <title>" ++ stripTags t ++ "</title>"
+        , "    <title>" ++ stripTags title ++ "</title>"
         , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"anatomy.css\" />"
+        , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"highlight.css\" />"
         , "  </head>"
-        , "  <body>"
-        , "    <div id=\"sidebar\">"
-        , "       <h4>On this page:</h4>"
-        , toc
-        , case mp of
-              Nothing -> ""
-              Just p -> "<h4>Up one level:</h4>" ++ p
-        , "    </div>"
+        , "  <body class=\"" ++ classes ++ "\">"
+
+        , if showTOC
+            then unlines
+                [ "    <div id=\"sidebar\">"
+                , "       <h4>On this page:</h4>"
+                , toc
+                , case parent of
+                    Nothing -> ""
+                    Just p -> "<h4>Up one level:</h4>" ++ p
+                , "    </div>"
+                ]
+            else ""
+
         , "    <div id=\"content\">"
-        , "      <h1>" ++ t ++ "</h1>"
-        , autoFlow b
+        , contentFor (sectionStyle s) title (autoFlow body)
         , "    </div>"
         , "  </body>"
         , "</html>"
         ]
+
+    return (particle "done")
+
+contentFor :: Style -> String -> String -> String
+contentFor s t b
+    | styleMatch Annotated s =
+        concat
+            [ "<table class=\"annotated-source\">"
+            , "<thead><tr><th class=\"prose\"><h1>" ++ t ++ "</h1></th><th class=\"code\"></th></tr></thead>"
+            , b
+            , "</table>"
+            ]
+    | otherwise =
+        concat
+            [ "<h1>" ++ t ++ "</h1>"
+            , b
+            ]
 
 getAObject :: AVM Value
 getAObject = do
@@ -308,7 +331,7 @@ sectionURL s@(Section { sectionParent = Nothing }) =
     pageURL s
 sectionURL s@(Section { sectionParent = Just sr }) = do
     p <- liftIO (readIORef sr)
-    if sectionStyle p == TOC
+    if styleMatch TOC (sectionStyle p)
         then pageURL s
         else do
             st <- buildForString' (tagOrTitle s)

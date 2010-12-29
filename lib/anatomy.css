@@ -61,7 +61,7 @@ dd {
 }
 
 #sidebar {
-    background: #f0f0f0;
+    background: rgba(0, 0, 0, .06);
     padding: 1em;
     width: 16em;
     height: 100%;
@@ -80,6 +80,8 @@ dd {
 
 #content {
     padding: 2em;
+}
+.with-sidebar #content {
     position: absolute;
     left: 0;
     right: 18em;
@@ -136,4 +138,44 @@ pre a:hover {
     font-style: italic;
     background: #fee;
     color: #a33;
+}
+
+.annotated #content {
+    position: static;
+    padding: 0;
+}
+.annotated #sidebar {
+    z-index: 1;
+    background: rgba(255, 255, 255, .5);
+}
+.annotated-source {
+    width: 100%;
+}
+.annotated-source thead h1 {
+    line-height: 1em;
+    margin: 1.2em 0 .39em 0;
+    font-weight: bold;
+}
+.annotated-source .prose {
+    background: #fff;
+    width: 30em;
+    max-width: 30em;
+    min-width: 30em;
+    padding: 1em 2em 0 3.5em;
+    overflow-x: auto;
+    vertical-align: top;
+    text-align: left;
+}
+.annotated-source .prose code,
+.annotated-source .prose pre {
+    background: #f8f8ff;
+    border: .1em solid #dedede;
+    padding: 0 0.2em;
+    overflow-x: auto;
+}
+.annotated-source .code {
+    background: #f5f5ff;
+    border-left: .1em solid #e5e5e5;
+    padding: 1.1em 2em 0em 1.5em;
+    vertical-align: top;
 }

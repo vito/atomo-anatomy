@@ -87,8 +87,14 @@ scan depth num path ss' = do
         liftIO (putStrLn "table of contents")
 
         scan' (acc
-            { sectionStyle = TOC
+            { sectionStyle = addStyle TOC (sectionStyle acc)
             , sectionBody = sectionBody acc ++ [TableOfContents]
+            }) ss
+    scan' acc (SingleDispatch "annotated-source":ss) = do
+        liftIO (putStrLn "annotated source")
+
+        scan' (acc
+            { sectionStyle = addStyle Annotated (sectionStyle acc)
             }) ss
     scan' acc (s:ss) =
         scan' (acc { sectionBody = sectionBody acc ++ [s] }) ss
