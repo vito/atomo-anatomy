@@ -42,6 +42,7 @@ library
     Anatomy.AutoFlow,
     Anatomy.Builder,
     Anatomy.Parser,
+    Anatomy.Scanner,
     Anatomy.Types,
     Paths_anatomy
 
@@ -71,6 +72,6 @@ executable anatomy
     parsec >= 3.0.0,
     pretty,
     pretty-show,
-    tagsoup >= 0.12,
+    tagsoup,
     time,
     vector
