@@ -26,13 +26,13 @@ load = do
         fn <- getString [$e|fn|]
 
         path <- fmap takeDirectory . liftIO $ canonicalizePath fn
-        
+
         liftIO (putStrLn ("path: " ++ path))
         ast <- parseFile fn
         sec <- scan 0 1 path ast
         [$p|a state|] =:: Haskell (toDyn sec)
         here "a"
-        
+
     [$p|(a: A) url-for: (e: Expression)|] =: do
         Expression ae <- here "e" >>= findExpression
         Haskell a <- eval [$e|a state|]

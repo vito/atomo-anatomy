@@ -1,6 +1,6 @@
 module Anatomy.Scanner where
 
-import "monads-fd" Control.Monad.State
+import Control.Monad.State
 import Data.IORef
 import System.Directory
 import System.FilePath
@@ -62,7 +62,7 @@ scan depth num path ss' = do
             if check
                 then liftIO (canonicalizePath (p </> fn))
                 else findFile ps fn
-            
+
     scan' acc (KeywordDispatch ["section", "tag"] [s, t]:ss) = do
         subsection acc s (Just t) ss
     scan' acc (KeywordDispatch ["section"] [s]:ss) =

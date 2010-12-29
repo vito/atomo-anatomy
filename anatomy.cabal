@@ -28,7 +28,6 @@ library
     filepath,
     hashable,
     haskeline,
-    monads-fd,
     mtl,
     parsec >= 3.0.0,
     pretty,
@@ -53,7 +52,7 @@ library
 executable anatomy
   hs-source-dirs:     src
   main-is:            Main.hs
-  
+
   ghc-prof-options:   -prof -auto-all -caf-all
   ghc-options:        -Wall -threaded -fno-warn-unused-do-bind
 
@@ -67,7 +66,6 @@ executable anatomy
     filepath,
     hashable,
     haskeline,
-    monads-fd,
     mtl,
     parsec >= 3.0.0,
     pretty,

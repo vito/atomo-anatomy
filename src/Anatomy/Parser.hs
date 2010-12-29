@@ -1,6 +1,6 @@
 module Anatomy.Parser (parseFile, parseDefinition) where
 
-import "monads-fd" Control.Monad.Error
+import Control.Monad.Error
 import Data.Char (isSpace)
 import Data.Hashable (hash)
 import Data.List (intercalate)
@@ -11,7 +11,6 @@ import Atomo.Parser.Expand
 import Atomo.Parser.Expr hiding (parser)
 import qualified Atomo.Types as AT
 import qualified Atomo.Parser.Base as AB
-import qualified "mtl" Control.Monad.Trans as MTL
 
 import Anatomy.Debug
 import Anatomy.Types
@@ -25,7 +24,7 @@ nested = do
     ps <- getState
     pos <- getPosition
     block <- balancedBetween '{' '}'
-    res <- MTL.lift $ runParserT parser ps (show pos) (cleanup block)
+    res <- lift $ runParserT parser ps (show pos) (cleanup block)
     case res of
         Left e -> fail ("nested: " ++ show e)
         Right ok -> return ok
@@ -76,7 +75,7 @@ keyword = do
 
                 let punct = reverse . takeWhile AB.isOpLetter . reverse $ ident
                     sane = reverse . dropWhile AB.isOpLetter . reverse $ ident
-                
+
                 getInput >>= setInput . (punct ++)
 
                 return . Atomo . AT.Dispatch Nothing $ AT.ESingle (hash sane) sane (AT.ETop Nothing)
