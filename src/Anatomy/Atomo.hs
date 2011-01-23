@@ -52,19 +52,19 @@ load = do
 
         find <-
             case ae of
-                Dispatch { eMessage = Single { mName = n } } ->
+                EDispatch { eMessage = Single { mName = n } } ->
                     runAVM' (findBinding (SingleKey n) st) st
-                Dispatch { eMessage = Keyword { mNames = ns } } ->
+                EDispatch { eMessage = Keyword { mNames = ns } } ->
                     runAVM' (findBinding (KeywordKey ns) st) st
 
-                EParticle { eParticle = PMSingle n } ->
+                EParticle { eParticle = Single { mName = n } } ->
                     runAVM' (findBinding (SingleKey n) st) st
-                EParticle { eParticle = PMKeyword ns _ } ->
+                EParticle { eParticle = Keyword { mNames = ns } } ->
                     runAVM' (findBinding (KeywordKey ns) st) st
 
-                Primitive { eValue = Particle (PMSingle n) } ->
+                EPrimitive { eValue = Particle (Single { mName = n }) } ->
                     runAVM' (findBinding (SingleKey n) st) st
-                Primitive { eValue = Particle (PMKeyword ns _) } ->
+                EPrimitive { eValue = Particle (Keyword { mNames = ns }) } ->
                     runAVM' (findBinding (KeywordKey ns) st) st
 
                 _ -> raise ["no-url-for"] [Expression ae]

@@ -1,107 +1,96 @@
 module Anatomy.Parser (parseFile, parseDefinition) where
 
 import Control.Monad.Error
-import Data.Char (isSpace)
-import Data.List (intercalate)
 import Text.Parsec hiding (parse)
 import Atomo.Parser (continue)
-import Atomo.Parser.Base (Parser)
+import Atomo.Lexer.Base (TaggedToken)
 import Atomo.Parser.Expand
 import Atomo.Parser.Expr hiding (parser)
 import qualified Atomo.Types as AT
-import qualified Atomo.Parser.Base as AB
+import qualified Atomo.Parser.Base as AP
 
-import Anatomy.Debug
+import Anatomy.Lexer (lexer, defLexer, tagged)
+import Anatomy.Parser.Base
 import Anatomy.Types
 
 
-special :: Char
-special = '#'
-
-nested :: Parser [Segment]
-nested = do
-    ps <- getState
+pNested :: Parser Segment
+pNested = do
     pos <- getPosition
-    block <- balancedBetween '{' '}'
-    res <- lift $ runParserT parser ps (show pos) (cleanup block)
-    case res of
+    s <- getState
+    ts <- nested
+    case runParser p s (show pos) ts of
         Left e -> fail ("nested: " ++ show e)
-        Right ok -> return ok
+        Right (r, s') -> do
+            putState s'
+            return (Nested r)
   where
-    cleanup s = intercalate "\n" . map (drop indentLevel) $ ls
-      where
-        ls = dropWhile null . lines $ s
-        indentLevel = length . takeWhile isSpace $ head ls
+    p = do
+        r <- parser
+        s <- getState
+        return (r, s)
 
+subParse :: [TaggedAToken] -> Parser [Segment]
+subParse ts = do
+    pos <- getPosition
+    s <- getState
+    case runParser p s (show pos) ts of
+        Left e -> fail ("sub: " ++ show e)
+        Right (r, s') -> do
+            putState s'
+            return r
+  where
+    p = do
+        r <- parser
+        s <- getState
+        return (r, s)
 
-chunk :: Parser Segment
-chunk = do
-    c <- satisfy (/= special)
-    cs <- anyToken `manyTill` (eof <|> lookAhead (char special >> return ()))
-    dump ("got chunk", c:cs)
-    return (Chunk (c:cs))
+pChunk :: Parser Segment
+pChunk = do
+    c <- chunk
+    return (Chunk c)
 
-keyword :: Parser Segment
-keyword = do
-    char special
-    ks <- many1 . try $ do
-        name <- AB.anyIdent
-        char ':'
-        val <- choice
-            [ fmap Nested nested
-            , try $ fmap Atomo . choice $
-                -- literal value
-                [ unlexeme pLiteral
+pKeyword :: Parser Segment
+pKeyword = do
+    (ns, ts) <- keyword
+    ss <- subParse ts
+    return (KeywordDispatch ns ss)
 
-                -- arbitrary expr
-                , try . between (char '(') (char ')') $
-                    pExpr
-                ]
+pSingle :: Parser Segment
+pSingle = fmap SingleDispatch single
 
-            -- single reference; trailing punctuation is ignored
-            , do
-                ident <- AB.anyIdent
+pAtomo :: Parser Segment
+pAtomo = do
+    ts <- atomo
+    fmap Atomo (subAtomo pExpr ts)
 
-                let punct = reverse . takeWhile AB.isOpLetter . reverse $ ident
-                    sane = reverse . dropWhile AB.isOpLetter . reverse $ ident
+subAtomo :: AP.Parser a -> [TaggedToken] -> Parser a
+subAtomo p ts = do
+    pos <- getPosition
+    s <- getState
+    case runParser p s (show pos) ts of
+        Left e -> fail ("atomo: " ++ show e)
+        Right ok -> return ok
 
-                getInput >>= setInput . (punct ++)
-
-                return . Atomo . AT.Dispatch Nothing $ AT.single sane (AT.ETop Nothing)
-            ]
-        dump ("got value", val)
-        return (name, val)
-
-    let (ns, vs) = unzip ks
-
-    return (KeywordDispatch ns vs)
-
-single :: Parser Segment
-single = fmap (debug "single") $ do
-    char special
-    name <- AB.identifier
-    notFollowedBy (char ':')
-    dump ("got single identifier", name)
-    return (SingleDispatch name)
-
-atomo :: Parser Segment
-atomo = fmap (debug "atomo") $ do
-    char special
-    fmap Atomo (between (char '(') (char ')') pExpr)
+pDefinition :: Parser Definition
+pDefinition = do
+    (t, cs, r) <- definition
+    nt <- subAtomo pDispatch t
+    ncs <- mapM (subAtomo pDispatch) cs
+    nr <- subAtomo pDispatch r
+    return (Definition nt ncs nr)
 
 parser :: Parser [Segment]
 parser = do
     ss <- many $ choice
-        [ try keyword
-        , try single
-        , try atomo
-        , chunk
+        [ try pKeyword
+        , try pSingle
+        , try pAtomo
+        , try pNested
+        , pChunk
         ]
     eof
     return ss
-
-parseFile :: String -> AT.VM [Segment]
-parseFile fn = liftIO (readFile fn) >>= continue parser fn >>= mapM expandSegment
 
 expandSegment :: Segment -> AT.VM Segment
 expandSegment (Atomo e) = liftM Atomo (macroExpand e)
@@ -111,61 +100,11 @@ expandSegment (InlineDefinition d (Just s)) =
   liftM (InlineDefinition d . Just) (expandSegment s)
 expandSegment s = return s
 
-defParser :: Parser Definition
-defParser = do
-    thumb <- pDispatch
-
-    AB.whiteSpace
-
-    cs <- many . try $ do
-        AB.symbol "|"
-        d <- pDispatch
-        AB.whiteSpace
-        return d
-
-    AB.whiteSpace
-
-    ret <- AB.symbol ">" >> pDispatch
-
-    return Definition
-        { defThumb = thumb
-        , defContracts = cs
-        , defReturn = ret
-        }
-
--- restore the whitespace that a lexeme parser nom'd up
-unlexeme :: Parser a -> Parser a
-unlexeme p = do
-    before <- getInput
-    r <- p
-    after <- getInput
-    backtrack before after
-    return r
-  where
-    backtrack b a = setInput (trailing ++ a)
-      where
-        trailing
-            = reverse
-            . takeWhile isSpace
-            . reverse
-            . take (length b - length a)
-            $ b
-
--- grab text between characters, balanced
-balancedBetween :: Char -> Char -> Parser String
-balancedBetween o c = try $ do
-    char o
-    raw <- many . choice $
-        [ many1 $ noneOf [o, c]
-        , do
-            res <- balancedBetween o c
-            return $ o : res ++ [c]
-        ]
-    char c
-    return $ concat raw
+parseFile :: String -> AT.VM [Segment]
+parseFile fn = liftIO (readFile fn) >>= continue lexer parser fn >>= mapM expandSegment
 
 parseDefinition :: String -> AT.VM Definition
 parseDefinition = continue
-    (do { r <- defParser; eof; return r })
+    (fmap (:[]) $ tagged defLexer)
+    (do { r <- pDefinition; eof; return r })
     "<definition>"
-

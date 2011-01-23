@@ -16,8 +16,8 @@ import Anatomy.Scanner
 import Anatomy.Types
 
 import Atomo.Environment
+import Atomo.Helpers (prettyVM)
 import Atomo.Run
-import Atomo.PrettyVM
 import Atomo.Types
 import Atomo.Parser.Expand (macroExpand)
 
@@ -42,11 +42,7 @@ build (Atomo e) = do
     env <- gets sectionA >>= lift . dispatch . single "environment"
     e' <- lift (macroExpand e)
     r <- lift (liftM show $ withTop env (eval e') >>= prettyVM)
-
-    case e' of
-        Set {} -> return ""
-        Define {} -> return ""
-        _ -> return r
+    return ""
 build (Nested ss) = fmap concat $ mapM build ss
 build (SectionReference n) = do
     style <- gets sectionStyle

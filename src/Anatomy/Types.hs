@@ -4,7 +4,9 @@ module Anatomy.Types where
 import Control.Monad.State
 import Data.IORef
 import Data.Typeable
+import Text.Parsec (SourcePos)
 
+import Atomo.Lexer.Base (TaggedToken)
 import qualified Atomo.Types as AT
 
 data Title =
@@ -77,6 +79,22 @@ data TOCTree
     | Branch String String [TOCTree]
     deriving Show
 
+data AToken
+    = ATokChunk String
+    | ATokKeyword [String] [TaggedAToken]
+    | ATokSingle String
+    | ATokAtomo [TaggedToken]
+    | ATokNested [TaggedAToken]
+    | ATokDefinition [TaggedToken] [[TaggedToken]] [TaggedToken]
+    deriving Show
+
+data TaggedAToken =
+    TaggedAToken
+        { taToken :: AToken
+        , taLocation :: SourcePos
+        }
+    deriving Show
+
 styleToClass :: Style -> String
 styleToClass (Class s) = s
 styleToClass TOC = "table-of-contents"
@@ -100,8 +118,8 @@ styleMatch _ _ = False
 defKey :: Definition -> BindingKey
 defKey d =
     case defThumb d of
-        AT.Dispatch { AT.eMessage = AT.Keyword { AT.mNames = ns } } -> KeywordKey ns
-        AT.Dispatch { AT.eMessage = AT.Single { AT.mName = n } } -> SingleKey n
+        AT.EDispatch { AT.eMessage = AT.Keyword { AT.mNames = ns } } -> KeywordKey ns
+        AT.EDispatch { AT.eMessage = AT.Single { AT.mName = n } } -> SingleKey n
         _ -> error $ "no defKey for: " ++ show (defThumb d)
 
 bindingID :: BindingKey -> String

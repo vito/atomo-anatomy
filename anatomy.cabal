@@ -1,5 +1,5 @@
 name:                anatomy
-version:             0.3
+version:             0.4
 synopsis:            Anatomy: Atomo documentation system
 description:         A Scribble-like documentation language/builder for Atomo.
 homepage:            http://atomo-lang.org/
@@ -27,7 +27,7 @@ library
     base >= 4 && < 5,
     blaze-html,
     bytestring,
-    atomo >= 0.3,
+    atomo >= 0.4,
     containers,
     directory,
     filepath,
