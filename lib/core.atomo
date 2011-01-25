@@ -49,7 +49,11 @@ A link: (name: String) to: (url: String) :=
 
 -- example interaction session
 (a: A) example: (s: String) :=
-  ("<em>Example:</em>" .. (a interaction: s))
+  a example: s on: Lobby clone
+(a: A) example: (s: String) on: (t: Expression) :=
+  a example: s on: (a evaluate: t)
+(a: A) example: (s: String) on: env :=
+  ("<em>Example:</em>" .. (a interaction: s on: env))
     in-tag: "div class=\"example\""
 
 -- example interaction session
