@@ -47,7 +47,7 @@ chunk = do
     c <- sub
     cs <- manyTill sub (eof <|> lookAhead (char special >> return ()))
     dump ("got chunk", (c:cs))
-    return (ATokChunk (c:cs))
+    return (ATokChunk (unescape $ c:cs))
   where
     sub = choice
         [ try $ do
@@ -55,6 +55,11 @@ chunk = do
             char special
         , satisfy (/= special)
         ]
+
+    unescape "" = ""
+    unescape ('\\':'{':cs) = '{' : unescape cs
+    unescape ('\\':'}':cs) = '}' : unescape cs
+    unescape (c:cs) = c : unescape cs
 
 keyword :: Lexer AToken
 keyword = do
@@ -100,7 +105,7 @@ keyword = do
                 -- some atomo code between keywords
                 , do
                     p <- getPosition
-                    s <- manyTill anyToken $ choice
+                    s <- manyTill (noneOf "{}") $ choice
                         [ lookAhead . try $ do
                             AB.anyIdent
                             char ':'
@@ -187,12 +192,16 @@ defLexer = do
 
 -- grab text between characters, balanced
 balancedBetween :: Char -> Char -> Lexer String
-balancedBetween o c = try $ do
+balancedBetween o c = do
     char o
     raw <- many . choice $
-        [ many1 $ noneOf [o, c]
+        [ try $ do
+            char '\\'
+            x <- anyToken
+            return ['\\', x]
+        , many1 (noneOf [o, c, '\\'])
         , do
-            res <- balancedBetween o c
+            res <- try $ balancedBetween o c
             return $ o : res ++ [c]
         ]
     char c

@@ -83,10 +83,10 @@ pDefinition = do
 parser :: Parser [Segment]
 parser = do
     ss <- many $ choice
-        [ try pKeyword
-        , try pSingle
-        , try pAtomo
-        , try pNested
+        [ pKeyword
+        , pSingle
+        , pAtomo
+        , pNested
         , pChunk
         ]
     eof
