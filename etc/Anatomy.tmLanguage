@@ -127,7 +127,7 @@
                     <array>
                         <dict>
                             <key>include</key>
-                            <string>#nest_braces</string>
+                            <string>#nest_braces_atomo</string>
                         </dict>
                         <dict>
                             <key>include</key>
@@ -446,6 +446,25 @@
                 <dict>
                     <key>include</key>
                     <string>$base</string>
+                </dict>
+            </array>
+        </dict>
+        <key>nest_braces_atomo</key>
+        <dict>
+            <key>begin</key>
+            <string>\{</string>
+            <key>end</key>
+            <string>\}</string>
+            <key>patterns</key>
+            <array>
+                <dict>
+                    <key>include</key>
+                    <string>#nest_braces_atomo</string>
+                </dict>
+
+                <dict>
+                    <key>include</key>
+                    <string>source.atomo</string>
                 </dict>
             </array>
         </dict>
