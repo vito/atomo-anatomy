@@ -7,6 +7,7 @@ require: "util.atomo"
 -- various semantic helpers
 A bold: s := s in-tag: "strong"
 A italic: s := s in-tag: "em"
+A underline: s := s in-tag: "span style=\"text-decoration: underline\""
 A code: (s: String) := s escape in-tag: "code"
 A list: s := s in-tag: "ul"
 A numbered-list: s := s in-tag: "ol"
@@ -70,7 +71,7 @@ A link: (name: String) to: (url: String) :=
   a interaction: s on: (a evaluate: t)
 (a: A) interaction: (s: String) on: env :=
   { ("interaction: " .. s show) print
-  
+
     log = s lines (map: { e |
       output = String-Port new do: {
         display: s :=
