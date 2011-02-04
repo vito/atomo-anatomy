@@ -26,7 +26,11 @@ unindent :=
 -- default pretty-printer; just do @show
 (a: A) pretty: o := a highlight: o show
 (a: A) pretty: (e: Expression) :=
-  a highlight: e pretty-expression render
+  if: value-output?
+    then: { a highlight: e show }
+    else: {
+      a highlight: e pretty-expression render
+    }
 
 -- find a url for an expression, and link it with t as the text
 (a: A) linked: (e: Expression) as: (t: String) :=
