@@ -37,6 +37,8 @@ A link: (name: String) to: (url: String) :=
   name in-tag: ("a href=\"" .. url .. "\" class=\"external\"")
 
 -- pretty-printing a single expr, inline
+(a: A) hl: (e: Expression) :=
+  a hl: (a evaluate: e)
 (a: A) hl: (s: String) :=
   (a highlight: s) in-tag: "code"
 
