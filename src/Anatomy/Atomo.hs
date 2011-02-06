@@ -1,16 +1,14 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Anatomy.Atomo where
 
-import Data.Char (isSpace)
 import Data.Dynamic
 import Data.Text.Encoding
 import Prelude hiding (div, span)
 import System.Directory
 import System.FilePath
 import Text.Blaze.Html5 hiding (p, string)
-import Text.Blaze.Html5.Attributes hiding (span)
+import Text.Blaze.Html5.Attributes hiding (name, span)
 import Text.Blaze.Renderer.String
-import Text.Highlighter.Formatters.Html
 import Text.Highlighter.Lexers.Atomo (lexer)
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -46,9 +44,9 @@ load = do
 
     [$p|(a: A) url-for: (e: Expression)|] =: do
         Expression ae <- here "e" >>= findExpression
-        Haskell a <- eval [$e|a state|]
+        Haskell ds <- eval [$e|a state|]
 
-        let st = fromDyn a (error "hotlink A is invalid") :: Section
+        let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
         find <-
             case ae of
@@ -76,9 +74,9 @@ load = do
 
     [$p|(a: A) reference: (s: String)|] =: do
         n <- getString [$e|s|]
-        Haskell a <- eval [$e|a state|]
+        Haskell ds <- eval [$e|a state|]
 
-        let st = fromDyn a (error "hotlink A is invalid") :: Section
+        let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
         flip runAVM' st $ do
             ms <- findSection n st
@@ -91,23 +89,25 @@ load = do
 
     [$p|(a: A) atomo: (s: String)|] =: do
         s <- getText [$e|s|]
-        Haskell a <- eval [$e|a state|]
+        Haskell ds <- eval [$e|a state|]
 
-        let st = fromDyn a (error "hotlink A is invalid") :: Section
+        let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
         case HL.runLexer lexer (encodeUtf8 s) of
-            Left e -> error ("lexing of Atomo source failed: " ++ show (s, e))
+            Left err ->
+                error ("lexing of Atomo source failed: " ++ show (s, err))
             Right ts ->
                 liftM (string . renderHtml . (div ! class_ (stringValue "highlight")) . pre) (runAVM' (autoLink ts) st)
 
     [$p|(a: A) highlight: (s: String)|] =: do
         s <- getText [$e|s|]
-        Haskell a <- eval [$e|a state|]
+        Haskell ds <- eval [$e|a state|]
 
-        let st = fromDyn a (error "hotlink A is invalid") :: Section
+        let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
         case HL.runLexer lexer (encodeUtf8 s) of
-            Left e -> error ("lexing of Atomo source failed: " ++ show (s, e))
+            Left err ->
+                error ("lexing of Atomo source failed: " ++ show (s, err))
             Right ts ->
                 liftM (string . renderHtml) (runAVM' (autoLink ts) st)
 

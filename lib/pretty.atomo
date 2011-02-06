@@ -39,4 +39,3 @@ unindent :=
     @(ok: u) ->
       t escape in-tag: ("a href=\"" .. docs-root .. u .. "\"")
   }
-
