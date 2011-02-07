@@ -180,7 +180,16 @@ buildDocument o = do
     title <- build . titleText . sectionTitle $ s
 
     liftIO (putStrLn "building body")
-    body <- fmap concat $ mapM build (sectionBody s)
+    body <- fmap concat $ forM (sectionBody s) $ \b -> do
+         case b of
+             SectionReference n | and
+                [ not (styleMatch TOC (sectionStyle s))
+                , styleMatch TOC (sectionStyle $ subSections s !! n)
+                ] -> do
+                let c = subSections s !! n
+                runAVM (buildDocument o) c
+                return ""
+             _ -> build b
 
     liftIO (putStrLn "getting parent")
     parent <-
