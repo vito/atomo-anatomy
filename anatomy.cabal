@@ -17,8 +17,8 @@ data-files:          lib/anatomy.css
                      lib/*.atomo
 
 source-repository   head
-    type:           hg
-    location:       http://bitbucket.org/alex/anatomy
+    type:           darcs
+    location:       http://darcsden.com/alex/anatomy
 
 library
   hs-source-dirs:    src
