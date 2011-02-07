@@ -32,11 +32,14 @@ a:visited {
     color: purple;
 }
 
-ol {
+ol, ul {
     margin-left: 2em;
 }
 ol li {
     list-style: decimal;
+}
+ul li {
+    list-style: square;
 }
 
 strong { font-weight: bold }
@@ -50,6 +53,11 @@ h1 {
 h2 {
     font-size: 1.75em;
     margin-bottom: .5em;
+}
+.section .section h2 {
+    font-size: 1.4em;
+    padding-bottom: .25em;
+    border-bottom: 1px dotted #bbb;
 }
 
 p {
@@ -93,6 +101,10 @@ dd {
     margin: 1em 0;
     padding: 1em 0;
     border-bottom: .1em dotted #000;
+}
+.section .section {
+    margin: 0;
+    border: none;
 }
 
 .definition {

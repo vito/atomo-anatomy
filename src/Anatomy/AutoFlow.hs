@@ -15,7 +15,7 @@ autoFlow = renderTags . autoFlow' False . canonicalizeTags . parseTags
 
         -- inline element, not in a <p>; start a <p>
         | isPhrasing n = TagOpen "p" [] : o : autoFlow' True ts
-        
+
         -- opening a block element; </p>
         | open = TagClose "p" : autoFlow' False (o:ts)
 
@@ -59,14 +59,14 @@ isPhrasing = flip elem . words $
 -- flow content, excluding phrasing
 isBlock :: String -> Bool
 isBlock = flip elem . words $
-    "article aside blockquote details div dl fieldset figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr menu nav ol p pre section style table tr td ul"
+    "article aside blockquote details div dl fieldset figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr menu nav ol p pre section style table tr td ul li"
 
 isFlow :: String -> Bool
 isFlow x = isPhrasing x || isBlock x
 
 isFlowable :: String -> Bool
 isFlowable = flip elem . words $
-    "article aside blockquote dd div dl footer header section table tr td"
+    "article aside blockquote dd div dl footer header section table tr td ul ol li"
 
 getTagContent :: String -> [Tag String] -> [Tag String]
 getTagContent n ts' = getTagContent' 0 [] ts'
