@@ -63,6 +63,9 @@ h2 {
 p {
     padding-bottom: 1em;
 }
+.toc p {
+    padding: 0;
+}
 
 dd {
     margin: 0 0 1em 2em;
