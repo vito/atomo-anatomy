@@ -18,6 +18,7 @@ html {
 
 body {
     font: normal 1.5em/1.46em 'Palatino Linotype', 'Book Antiqua', Palatino, FreeSerif, Georgia, serif;
+    height: 100%;
 }
 
 pre, code {
@@ -195,4 +196,57 @@ code a:hover {
     border-left: .1em solid #e5e5e5;
     padding: 1.1em 2em 0em 1.5em;
     vertical-align: top;
+}
+
+.slides {
+    overflow-x: hidden;
+    background: #f0f0f0;
+}
+.slides #content {
+    padding: 0;
+    position: relative;
+    background: #f0f0f0;
+    height: 100%;
+    width: auto;
+    overflow-x: hidden;
+}
+.slides #content > h1 {
+    display: none;
+}
+.slides #content > p {
+    display: none;
+}
+.slides #sidebar {
+    display: none;
+}
+.slides .section {
+    width: 824px;
+    height: 568px;
+    margin: 0 auto;
+    padding: 100px;
+    border: 0;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin: -384px 0 0 -512px;
+    background: #fff;
+}
+.slides .section h2 {
+    font-size: 5em;
+    line-height: 1em;
+    text-align: center;
+    margin: 0 0 1em;
+}
+.slides .section p {
+    font-size: 2em;
+}
+.slides .section ul li {
+    list-style: disc;
+    font-size: 2em;
+}
+.slides .section ul li p {
+    font-size: 1em;
+}
+.slides .section pre {
+    line-height: 1.4em;
 }

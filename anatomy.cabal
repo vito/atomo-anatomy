@@ -14,6 +14,8 @@ cabal-version:       >= 1.6
 
 data-files:          lib/anatomy.css
                      lib/highlight.css
+                     lib/jquery.js
+                     lib/main.js
                      lib/*.atomo
 
 source-repository   head
