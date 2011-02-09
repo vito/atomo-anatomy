@@ -17,6 +17,10 @@ A item: s is: v := (s in-tag: "dt") .. (v in-tag: "dd")
 A verbatim: (s: String) :=
   s escape in-tag: "pre class=\"verbatim\""
 
+A name: (n: String) subtitle: (s: String) :=
+  f"<h1>%s</h1><p>%s</p>" (% (n, s))
+    in-tag: "div class=\"section name\""
+
 -- annotated source code
 (a: A) heading: (h: String) :=
   "<tr><th class=\"prose\"><h1>" .. h .. "</h1></th><th class=\"code\"></th></tr>"

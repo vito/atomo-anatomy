@@ -246,7 +246,19 @@ code a:hover {
 }
 .slides .section ul li p {
     font-size: 1em;
+    line-height: 1.4em;
 }
 .slides .section pre {
     line-height: 1.4em;
+}
+.slides .name h1 {
+    text-align: center;
+    font-size: 5em;
+    margin: 2.25em 0 0;
+}
+.slides .name p {
+    width: 512px;
+    margin: 0 auto;
+    line-height: 1.4em;
+    text-align: center;
 }
