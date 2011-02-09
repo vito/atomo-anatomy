@@ -240,16 +240,19 @@ code a:hover {
 .slides .section p {
     font-size: 2em;
 }
+.slides .section pre {
+    line-height: 1.4em;
+}
 .slides .section ul li {
     list-style: disc;
     font-size: 2em;
 }
-.slides .section ul li p {
+.slides .section li p {
     font-size: 1em;
     line-height: 1.4em;
 }
-.slides .section pre {
-    line-height: 1.4em;
+.slides .section li pre {
+    font-size: 1em;
 }
 .slides .name h1 {
     text-align: center;
