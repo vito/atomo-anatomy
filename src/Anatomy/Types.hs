@@ -22,6 +22,7 @@ data Style
     | TOC
     | Unnumbered
     | Annotated
+    | Slides
     | Class String
     | Styles [Style]
     deriving (Eq, Show, Typeable)
@@ -100,6 +101,7 @@ styleToClass (Class s) = s
 styleToClass TOC = "table-of-contents"
 styleToClass Unnumbered = "unnumbered"
 styleToClass Annotated = "annotated"
+styleToClass Slides = "slides"
 styleToClass None = "normal"
 styleToClass (Styles ss) = unwords (map styleToClass ss)
 

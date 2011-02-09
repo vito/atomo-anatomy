@@ -96,6 +96,12 @@ scan depth num path ss' = do
         scan' (acc
             { sectionStyle = addStyle Annotated (sectionStyle acc)
             }) ss
+    scan' acc (SingleDispatch "slides":ss) = do
+        liftIO (putStrLn "slides")
+
+        scan' (acc
+            { sectionStyle = addStyle Slides (sectionStyle acc)
+            }) ss
     scan' acc (s:ss) =
         scan' (acc { sectionBody = sectionBody acc ++ [s] }) ss
 
