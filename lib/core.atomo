@@ -50,6 +50,12 @@ A link: (name: String) to: (url: String) :=
     a atomo: s
   } call
 
+-- pretty-printing a block of code, with its result below
+(a: A) sample: (s: String) on: (e: Expression) :=
+  { res = do-input: s in: (a evaluate: e)
+    a atomo: (s .. "\n-- => " .. res show)
+  } call
+
 -- example interaction session
 (a: A) example: (s: String) :=
   a example: s on: Lobby clone
