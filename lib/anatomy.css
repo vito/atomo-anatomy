@@ -237,14 +237,11 @@ code a:hover {
     text-align: center;
     margin: 0 0 1em;
 }
-.slide h2 code {
-    font-size: 1em;
-}
 .slide p {
     font-size: 2em;
 }
-.slide pre,
-.slide code {
+.slide .body pre,
+.slide .body code {
     font-size: 24px;
     line-height: 1.4em;
 }
@@ -260,14 +257,29 @@ code a:hover {
     line-height: 1.4em;
     padding-bottom: .5em;
 }
+.slide.title,
+.slide.title-only {
+    display: table;
+    width: 1024px;
+    height: 768px;
+}
+.slide.title .body,
+.slide.title-only h1  {
+    display: table-cell;
+    vertical-align: middle;
+}
 .slide.title h1 {
     text-align: center;
     font-size: 5em;
-    margin: 2.25em 0 0;
+    margin-bottom: 0;
 }
 .slide.title p {
     width: 512px;
     margin: 0 auto;
     line-height: 1.4em;
     text-align: center;
+}
+.slide.title-only h1 {
+    text-align: center;
+    font-size: 5em;
 }

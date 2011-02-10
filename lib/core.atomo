@@ -17,8 +17,12 @@ A item: s is: v := (s in-tag: "dt") .. (v in-tag: "dd")
 A verbatim: (s: String) :=
   s escape in-tag: "pre class=\"verbatim\""
 
+A title: (n: String) :=
+  f"<h1>%s</h1>" (% n)
+    in-tag: "div class=\"slide title-only\""
+
 A title: (n: String) subtitle: (s: String) :=
-  f"<h1>%s</h1><p>%s</p>" (% (n, s))
+  f"<div class=\"body\"><h1>%s</h1><p>%s</p></div>" (% (n, s))
     in-tag: "div class=\"slide title\""
 
 A title: (n: String) body: (s: String) :=
