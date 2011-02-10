@@ -239,13 +239,14 @@ code a:hover {
 }
 .slide p {
     font-size: 2em;
+    line-height: 1.4em;
 }
 .slide .body pre,
 .slide .body code {
     font-size: 24px;
     line-height: 1.4em;
 }
-.slide ul {
+.slide .body > ul {
     margin-bottom: 1em;
 }
 .slide ul li {
@@ -254,7 +255,6 @@ code a:hover {
 }
 .slide li p {
     font-size: 1em;
-    line-height: 1.4em;
     padding-bottom: .5em;
 }
 .slide.title,
