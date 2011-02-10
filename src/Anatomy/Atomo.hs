@@ -9,6 +9,7 @@ import System.FilePath
 import Text.Blaze.Html5 hiding (p, string)
 import Text.Blaze.Html5.Attributes hiding (name, span)
 import Text.Blaze.Renderer.String
+import Text.Highlighter.Formatters.Html
 import Text.Highlighter.Lexers.Atomo (lexer)
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -107,9 +108,22 @@ load = do
 
         case HL.runLexer lexer (encodeUtf8 s) of
             Left err ->
-                error ("lexing of Atomo source failed: " ++ show (s, err))
+                error ("@highlight: - lexing failed: " ++ show (s, err))
             Right ts ->
                 liftM (string . renderHtml) (runAVM' (autoLink ts) st)
+
+    [$p|(a: A) highlight: (s: String) as: (lang: String)|] =: do
+        s <- getText [$e|s|]
+        l <- getString [$e|lang|] >>= \n ->
+            case HL.lexerFromFilename ("." ++ n) of
+                Nothing -> raise ["unknown-lexer"] [string n]
+                Just l -> return l
+
+        case HL.runLexer l (encodeUtf8 s) of
+            Left err ->
+                error ("@highlight:as: - lexing failed: " ++ show (s, err))
+            Right ts ->
+                return (string (renderHtml (format False ts)))
 
 
 
