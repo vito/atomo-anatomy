@@ -219,7 +219,7 @@ code a:hover {
 .slides #sidebar {
     display: none;
 }
-.slides .section {
+.slide {
     width: 824px;
     height: 568px;
     margin: 0 auto;
@@ -231,35 +231,41 @@ code a:hover {
     margin: -384px 0 0 -512px;
     background: #fff;
 }
-.slides .section h2 {
+.slide h2 {
     font-size: 5em;
     line-height: 1em;
     text-align: center;
     margin: 0 0 1em;
 }
-.slides .section p {
+.slide h2 code {
+    font-size: 1em;
+}
+.slide p {
     font-size: 2em;
 }
-.slides .section pre {
+.slide pre,
+.slide code {
+    font-size: 24px;
     line-height: 1.4em;
 }
-.slides .section ul li {
+.slide ul {
+    margin-bottom: 1em;
+}
+.slide ul li {
     list-style: disc;
-    font-size: 2em;
+    font-size: 30px;
 }
-.slides .section li p {
+.slide li p {
     font-size: 1em;
     line-height: 1.4em;
+    padding-bottom: .5em;
 }
-.slides .section li pre {
-    font-size: 1em;
-}
-.slides .name h1 {
+.slide.title h1 {
     text-align: center;
     font-size: 5em;
     margin: 2.25em 0 0;
 }
-.slides .name p {
+.slide.title p {
     width: 512px;
     margin: 0 auto;
     line-height: 1.4em;
