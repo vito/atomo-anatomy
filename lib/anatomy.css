@@ -237,6 +237,13 @@ code a:hover {
     text-align: center;
     margin: 0 0 1em;
 }
+.slide h2 .continue {
+    font-size: .5em;
+    color: #bbb;
+    position: absolute;
+    top: .5em;
+    right: 1em;
+}
 .slide p {
     font-size: 2em;
     line-height: 1.4em;

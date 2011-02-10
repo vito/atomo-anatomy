@@ -29,6 +29,10 @@ A title: (n: String) body: (s: String) :=
   f"<h2>%s</h2><div class=\"body\">%s</div>" (% (n, s))
     in-tag: "div class=\"slide\""
 
+A continue: (n: String) body: (s: String) :=
+  f"<h2>%s <span class=\"continue\">(cont'd)</span></h2><div class=\"body\">%s</div>" (% (n, s))
+    in-tag: "div class=\"slide continue\""
+
 -- annotated source code
 (a: A) heading: (h: String) :=
   "<tr><th class=\"prose\"><h1>" .. h .. "</h1></th><th class=\"code\"></th></tr>"
