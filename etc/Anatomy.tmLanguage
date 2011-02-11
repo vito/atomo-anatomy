@@ -366,6 +366,23 @@
                     </dict>
                 </dict>
                 <dict>
+                    <key>begin</key>
+                    <string>\(</string>
+                    <key>end</key>
+                    <string>\)</string>
+                    <key>patterns</key>
+                    <array>
+                        <dict>
+                            <key>include</key>
+                            <string>#nest_parens</string>
+                        </dict>
+                        <dict>
+                            <key>include</key>
+                            <string>source.atomo</string>
+                        </dict>
+                    </array>
+                </dict>
+                <dict>
                     <key>include</key>
                     <string>source.atomo</string>
                 </dict>
