@@ -241,7 +241,7 @@ code a:hover {
     font-size: .5em;
     color: #bbb;
     position: absolute;
-    top: .5em;
+    top: -3.75em;
     right: 1em;
 }
 .slide p {
