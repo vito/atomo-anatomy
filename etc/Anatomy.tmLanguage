@@ -112,7 +112,7 @@
                 </dict>
                 <dict>
                     <key>begin</key>
-                    <string>(hl|atomo|example|example-segment|interaction):\{</string>
+                    <string>(hl|atomo|example|example-segment|interaction|sample):\{</string>
                     <key>end</key>
                     <string>\}</string>
                     <key>beginCaptures</key>
