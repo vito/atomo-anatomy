@@ -144,6 +144,7 @@ buildFile fn o = do
         [ "anatomy.css"
         , "highlight.css"
         , "jquery.js"
+        , "jquery.hotkeys.js"
         , "main.js"
         ] $ \l ->
         getDataFileName ("lib/" ++ l) >>=
@@ -219,6 +220,7 @@ buildDocument o = do
         , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"anatomy.css\" />"
         , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"highlight.css\" />"
         , "    <script src=\"jquery.js\" type=\"text/javascript\"></script>"
+        , "    <script src=\"jquery.hotkeys.js\" type=\"text/javascript\"></script>"
         , "    <script src=\"main.js\" type=\"text/javascript\"></script>"
         , "  </head>"
         , "  <body class=\"" ++ classes ++ "\">"

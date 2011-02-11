@@ -269,6 +269,7 @@ code a:hover {
     display: table;
     width: 1024px;
     height: 768px;
+    padding: 0;
 }
 .slide.title .body,
 .slide.title-only h1  {
