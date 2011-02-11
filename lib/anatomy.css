@@ -199,7 +199,7 @@ code a:hover {
 }
 
 .slides {
-    overflow-x: hidden;
+    overflow: hidden;
     background: #f0f0f0;
 }
 .slides #content {
@@ -208,7 +208,7 @@ code a:hover {
     background: #f0f0f0;
     height: 100%;
     width: auto;
-    overflow-x: hidden;
+    overflow: hidden;
 }
 .slides #content > h1 {
     display: none;
