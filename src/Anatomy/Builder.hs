@@ -4,7 +4,8 @@ import Control.Monad.State
 import Data.Char
 import Data.Dynamic
 import Data.IORef
-import Data.Maybe (isJust)
+import Data.List (intercalate)
+import Data.Maybe (fromJust, isJust)
 import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup
@@ -207,6 +208,15 @@ buildDocument o = do
         classes | showTOC = "with-sidebar " ++ styleToClass (sectionStyle s)
                 | otherwise = styleToClass (sectionStyle s)
 
+    liftIO (putStrLn "generating search tags")
+    ts <- searchTags s
+    liftIO . writeFile (o </> "tags.js") . concat $
+        [ "var SEARCH_TAGS = {\n  "
+        , intercalate ",\n  " $
+            map (\(k, v) -> show k ++ ": " ++ show v) ts
+        , "\n};"
+        ]
+
     liftIO . writeFile (o </> fn) . unlines $
         [ "<!DOCTYPE html>"
         , "<html>"
@@ -262,6 +272,29 @@ getAObject = do
         (Slot (single "state" PThis) (Haskell (toDyn s)))
 
     return (sectionA s)
+
+searchTags :: Section -> AVM [(String, String)]
+searchTags s = do
+    t <- liftM stripTags $ build (titleText (sectionTitle s))
+    u <- sectionURL s
+
+    tag <-
+        case titleTag (sectionTitle s) of
+            Nothing -> return []
+            Just s -> do
+                x <- liftM stripTags $ buildForString' s
+                if null x
+                    then return []
+                    else return [(x, u)]
+
+    bs <- forM (sectionBindings s) $ \b -> do
+        u <- findBinding b s
+        case b of
+            SingleKey s -> return (s, fromJust u)
+            KeywordKey ss -> return (concat (map (++ ":") ss), fromJust u)
+
+    subts <- mapM searchTags (subSections s)
+    return ([(t, u)] ++ tag ++ bs ++ concat subts)
 
 findSection :: String -> Section -> AVM (Maybe Section)
 findSection n s = do
