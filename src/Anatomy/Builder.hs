@@ -141,11 +141,15 @@ buildFile :: FilePath -> FilePath -> IO ()
 buildFile fn o = do
     createDirectoryIfMissing True o
 
-    css <- getDataFileName "lib/anatomy.css" >>= readFile
-    hl <- getDataFileName "lib/highlight.css" >>= readFile
-
-    writeFile (o </> "anatomy.css") css
-    writeFile (o </> "highlight.css") hl
+    forM_
+        [ "anatomy.css"
+        , "highlight.css"
+        , "jquery.js"
+        , "jquery.hotkeys.js"
+        , "main.js"
+        ] $ \l ->
+        getDataFileName ("lib/" ++ l) >>=
+            readFile >>= writeFile (o </> l)
 
     path <- fmap takeDirectory $ canonicalizePath fn
 
@@ -225,6 +229,9 @@ buildDocument o = do
         , "    <title>" ++ stripTags title ++ "</title>"
         , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"anatomy.css\" />"
         , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"highlight.css\" />"
+        , "    <script src=\"jquery.js\" type=\"text/javascript\"></script>"
+        , "    <script src=\"jquery.hotkeys.js\" type=\"text/javascript\"></script>"
+        , "    <script src=\"main.js\" type=\"text/javascript\"></script>"
         , "  </head>"
         , "  <body class=\"" ++ classes ++ "\">"
 
