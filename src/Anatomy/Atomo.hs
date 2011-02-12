@@ -100,17 +100,20 @@ load = do
             Right ts ->
                 liftM (string . renderHtml . (div ! class_ (stringValue "highlight")) . pre) (runAVM' (autoLink ts) st)
 
-    [$p|(a: A) highlight: (s: String)|] =: do
+    [$p|(a: A) highlight: (s: String) &autolink|] =: do
         s <- getText [$e|s|]
         Haskell ds <- eval [$e|a state|]
+        Boolean auto <- here "autolink" >>= findBoolean
 
         let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
         case HL.runLexer lexer (encodeUtf8 s) of
             Left err ->
                 error ("@highlight: - lexing failed: " ++ show (s, err))
-            Right ts ->
+            Right ts | auto ->
                 liftM (string . renderHtml) (runAVM' (autoLink ts) st)
+            Right ts ->
+                return (string (renderHtml (formatInline ts)))
 
     [$p|(a: A) highlight: (s: String) as: (lang: String)|] =: do
         s <- getText [$e|s|]
@@ -123,7 +126,7 @@ load = do
             Left err ->
                 error ("@highlight:as: - lexing failed: " ++ show (s, err))
             Right ts ->
-                return (string (renderHtml (format False ts)))
+                return (string (renderHtml (formatInline ts)))
 
 
 
