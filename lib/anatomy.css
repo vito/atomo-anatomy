@@ -96,6 +96,18 @@ dd {
     padding: .25em .5em;
     background: rgba(255, 255, 255, .5);
 }
+#sidebar .search-results .parent {
+    font-size: .9em;
+    font-style: italic;
+    color: #555;
+}
+#sidebar .search-results .parent a {
+    color: #222;
+}
+#sidebar .search-results .tag {
+    font-style: italic;
+    color: #555;
+}
 #sidebar h4 {
     font-style: italic;
 }

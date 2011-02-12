@@ -5,7 +5,7 @@ import Data.Char
 import Data.Dynamic
 import Data.IORef
 import Data.List (intercalate)
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (isJust)
 import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup
@@ -297,10 +297,10 @@ searchTags s = do
                 x <- buildForString' s
                 if null x
                     then return []
-                    else return [(stripTags x, x, u)]
+                    else return [(stripTags x, prettyTag u x, u)]
 
     bs <- forM (sectionBindings s) $ \b -> do
-        u <- findBinding b s
+        Just bu <- findBinding b s
         s <- getAObject
         String s <- lift . dispatch $
             keyword'
@@ -308,10 +308,23 @@ searchTags s = do
                 [s, string $ bindingName b]
                 [option "autolink" (Boolean False)]
 
-        return (bindingName b, fromText s, fromJust u)
+        return (bindingName b, withParent (linkTo bu (fromText s)) u t, bu)
 
-    subts <- mapM searchTags (subSections s)
-    return ([(stripTags t, t, u)] ++ tag ++ bs ++ concat subts)
+    subts <- forM (subSections s) $ \c -> do
+        ts <- searchTags c
+        case ts of
+            ((ct, cpt, cu):ts) ->
+                return ((ct, withParent cpt u t, cu) : ts)
+
+    return ([(stripTags t, linkTo u t, u)] ++ tag ++ bs ++ concat subts)
+  where
+    prettyTag u t =
+        "<span class=\"tag\">tag: <code>" ++ linkTo u t ++ "</code></span>"
+
+    linkTo u x = "<a href=\"" ++ u ++ "\">" ++ x ++ "</a>"
+
+    withParent c u t = c ++
+        " <span class=\"parent\">in " ++ linkTo u t ++ "</span>"
 
 findSection :: String -> Section -> AVM (Maybe Section)
 findSection n s = do
