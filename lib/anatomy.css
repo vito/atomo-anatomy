@@ -83,6 +83,19 @@ dd {
     top: 0;
     bottom: 0;
 }
+#sidebar #search {
+    width: 14em;
+    padding: .5em;
+    border: 0;
+}
+#sidebar .search-results {
+    margin: .5em 0 2em 0;
+}
+#sidebar .search-results li {
+    list-style: none;
+    padding: .25em .5em;
+    background: rgba(255, 255, 255, .5);
+}
 #sidebar h4 {
     font-style: italic;
 }

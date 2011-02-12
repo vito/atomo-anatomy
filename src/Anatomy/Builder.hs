@@ -231,6 +231,7 @@ buildDocument o = do
         , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"highlight.css\" />"
         , "    <script src=\"jquery.js\" type=\"text/javascript\"></script>"
         , "    <script src=\"jquery.hotkeys.js\" type=\"text/javascript\"></script>"
+        , "    <script src=\"tags.js\" type=\"text/javascript\"></script>"
         , "    <script src=\"main.js\" type=\"text/javascript\"></script>"
         , "  </head>"
         , "  <body class=\"" ++ classes ++ "\">"
@@ -238,7 +239,11 @@ buildDocument o = do
         , if showTOC
             then unlines
                 [ "    <div id=\"sidebar\">"
-                , "       <h4>On this page:</h4>"
+                , "      <form class=\"search\" action=\"javascript:void(0)\">"
+                , "        <input type=\"text\" id=\"search\" />"
+                , "      </form>"
+                , "      <ul class=\"search-results\"></ul>"
+                , "      <h4>On this page:</h4>"
                 , toc
                 , case parent of
                     Nothing -> ""
