@@ -215,10 +215,10 @@ buildDocument o = do
     liftIO (putStrLn "generating search tags")
     ts <- searchTags s
     liftIO . writeFile (o </> "tags.js") . concat $
-        [ "var SEARCH_TAGS = {\n  "
+        [ "var SEARCH_TAGS = [\n  "
         , intercalate ",\n  " $
-            map (\(k, v) -> show k ++ ": " ++ show v) ts
-        , "\n};"
+            map (\(k, n, v) -> "[" ++ show k ++ ", " ++ show n ++ ", " ++ show v ++ "]") ts
+        , "\n];"
         ]
 
     liftIO . writeFile (o </> fn) . unlines $
@@ -280,28 +280,33 @@ getAObject = do
 
     return (sectionA s)
 
-searchTags :: Section -> AVM [(String, String)]
+searchTags :: Section -> AVM [(String, String, String)]
 searchTags s = do
-    t <- liftM stripTags $ build (titleText (sectionTitle s))
+    t <- build (titleText (sectionTitle s))
     u <- sectionURL s
 
     tag <-
         case titleTag (sectionTitle s) of
             Nothing -> return []
             Just s -> do
-                x <- liftM stripTags $ buildForString' s
+                x <- buildForString' s
                 if null x
                     then return []
-                    else return [(x, u)]
+                    else return [(stripTags x, x, u)]
 
     bs <- forM (sectionBindings s) $ \b -> do
         u <- findBinding b s
-        case b of
-            SingleKey s -> return (s, fromJust u)
-            KeywordKey ss -> return (concat (map (++ ":") ss), fromJust u)
+        s <- getAObject
+        String s <- lift . dispatch $
+            keyword'
+                ["highlight"]
+                [s, string $ bindingName b]
+                [option "autolink" (Boolean False)]
+
+        return (bindingName b, fromText s, fromJust u)
 
     subts <- mapM searchTags (subSections s)
-    return ([(t, u)] ++ tag ++ bs ++ concat subts)
+    return ([(stripTags t, t, u)] ++ tag ++ bs ++ concat subts)
 
 findSection :: String -> Section -> AVM (Maybe Section)
 findSection n s = do
