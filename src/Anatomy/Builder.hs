@@ -240,7 +240,7 @@ buildDocument o = do
             then unlines
                 [ "    <div id=\"sidebar\">"
                 , "      <form class=\"search\" action=\"javascript:void(0)\">"
-                , "        <input type=\"text\" id=\"search\" />"
+                , "        <input type=\"text\" id=\"search\" placeholder=\"Search&hellip;\" />"
                 , "      </form>"
                 , "      <ul class=\"search-results\"></ul>"
                 , "      <h4>On this page:</h4>"
