@@ -33,7 +33,8 @@ scan depth num path ss' = do
     return st
   where
     scan' acc [] = return acc
-    scan' acc (KeywordDispatch ["title"] [s]:ss) =
+    scan' acc (KeywordDispatch ["title"] [s]:ss)
+        | not (styleMatch Slides (sectionStyle acc)) =
         scan' (acc { sectionTitle = Title s Nothing Nothing }) ss
     scan' acc (KeywordDispatch ["title", "tag"] [s, t]:ss) =
         scan' (acc { sectionTitle = Title s (Just t) Nothing }) ss
@@ -95,6 +96,12 @@ scan depth num path ss' = do
 
         scan' (acc
             { sectionStyle = addStyle Annotated (sectionStyle acc)
+            }) ss
+    scan' acc (SingleDispatch "slides":ss) = do
+        liftIO (putStrLn "slides")
+
+        scan' (acc
+            { sectionStyle = addStyle Slides (sectionStyle acc)
             }) ss
     scan' acc (s:ss) =
         scan' (acc { sectionBody = sectionBody acc ++ [s] }) ss

@@ -18,6 +18,7 @@ html {
 
 body {
     font: normal 1.5em/1.46em 'Palatino Linotype', 'Book Antiqua', Palatino, FreeSerif, Georgia, serif;
+    height: 100%;
 }
 
 pre, code {
@@ -81,6 +82,31 @@ dd {
     right: 0;
     top: 0;
     bottom: 0;
+}
+#sidebar #search {
+    width: 14em;
+    padding: .5em;
+    border: 0;
+}
+#sidebar .search-results {
+    margin: .5em 0 2em 0;
+}
+#sidebar .search-results li {
+    list-style: none;
+    padding: .25em .5em;
+    background: rgba(255, 255, 255, .5);
+}
+#sidebar .search-results .parent {
+    font-size: .9em;
+    font-style: italic;
+    color: #555;
+}
+#sidebar .search-results .parent a {
+    color: #222;
+}
+#sidebar .search-results .tag {
+    font-style: italic;
+    color: #555;
 }
 #sidebar h4 {
     font-style: italic;
@@ -195,4 +221,98 @@ code a:hover {
     border-left: .1em solid #e5e5e5;
     padding: 1.1em 2em 0em 1.5em;
     vertical-align: top;
+}
+
+.slides {
+    overflow: hidden;
+    background: #f0f0f0;
+}
+.slides #content {
+    padding: 0;
+    position: relative;
+    background: #f0f0f0;
+    height: 100%;
+    width: auto;
+    overflow: hidden;
+}
+.slides #content > h1 {
+    display: none;
+}
+.slides #content > p {
+    display: none;
+}
+.slides #sidebar {
+    display: none;
+}
+.slide {
+    width: 824px;
+    height: 568px;
+    margin: 0 auto;
+    padding: 100px;
+    border: 0;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin: -384px 0 0 -512px;
+    background: #fff;
+}
+.slide h2 {
+    font-size: 5em;
+    line-height: 1em;
+    text-align: center;
+    margin: 0 0 1em;
+}
+.slide h2 .continue {
+    font-size: .5em;
+    color: #bbb;
+    position: absolute;
+    top: -3.75em;
+    right: 1em;
+}
+.slide p {
+    font-size: 2em;
+    line-height: 1.4em;
+}
+.slide .body pre,
+.slide .body code {
+    font-size: 24px;
+    line-height: 1.4em;
+}
+.slide .body > ul {
+    margin-bottom: 1em;
+}
+.slide ul li {
+    list-style: disc;
+    font-size: 30px;
+}
+.slide li p {
+    font-size: 1em;
+    padding-bottom: .5em;
+}
+.slide.title,
+.slide.title-only {
+    display: table;
+    width: 1024px;
+    height: 768px;
+    padding: 0;
+}
+.slide.title .body,
+.slide.title-only h1  {
+    display: table-cell;
+    vertical-align: middle;
+}
+.slide.title h1 {
+    text-align: center;
+    font-size: 5em;
+    margin-bottom: 0;
+}
+.slide.title p {
+    width: 512px;
+    margin: 0 auto;
+    line-height: 1.4em;
+    text-align: center;
+}
+.slide.title-only h1 {
+    text-align: center;
+    font-size: 5em;
 }

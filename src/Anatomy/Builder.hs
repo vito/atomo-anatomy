@@ -4,6 +4,7 @@ import Control.Monad.State
 import Data.Char
 import Data.Dynamic
 import Data.IORef
+import Data.List (intercalate)
 import Data.Maybe (isJust)
 import System.Directory
 import System.FilePath
@@ -140,11 +141,15 @@ buildFile :: FilePath -> FilePath -> IO ()
 buildFile fn o = do
     createDirectoryIfMissing True o
 
-    css <- getDataFileName "lib/anatomy.css" >>= readFile
-    hl <- getDataFileName "lib/highlight.css" >>= readFile
-
-    writeFile (o </> "anatomy.css") css
-    writeFile (o </> "highlight.css") hl
+    forM_
+        [ "anatomy.css"
+        , "highlight.css"
+        , "jquery.js"
+        , "jquery.hotkeys.js"
+        , "main.js"
+        ] $ \l ->
+        getDataFileName ("lib/" ++ l) >>=
+            readFile >>= writeFile (o </> l)
 
     path <- fmap takeDirectory $ canonicalizePath fn
 
@@ -207,6 +212,15 @@ buildDocument o = do
         classes | showTOC = "with-sidebar " ++ styleToClass (sectionStyle s)
                 | otherwise = styleToClass (sectionStyle s)
 
+    liftIO (putStrLn "generating search tags")
+    ts <- searchTags s
+    liftIO . writeFile (o </> "tags.js") . concat $
+        [ "var SEARCH_TAGS = [\n  "
+        , intercalate ",\n  " $
+            map (\(k, n, v) -> "[" ++ show k ++ ", " ++ show n ++ ", " ++ show v ++ "]") ts
+        , "\n];"
+        ]
+
     liftIO . writeFile (o </> fn) . unlines $
         [ "<!DOCTYPE html>"
         , "<html>"
@@ -215,13 +229,21 @@ buildDocument o = do
         , "    <title>" ++ stripTags title ++ "</title>"
         , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"anatomy.css\" />"
         , "    <link rel=\"stylesheet\" type=\"text/css\" href=\"highlight.css\" />"
+        , "    <script src=\"jquery.js\" type=\"text/javascript\"></script>"
+        , "    <script src=\"jquery.hotkeys.js\" type=\"text/javascript\"></script>"
+        , "    <script src=\"tags.js\" type=\"text/javascript\"></script>"
+        , "    <script src=\"main.js\" type=\"text/javascript\"></script>"
         , "  </head>"
         , "  <body class=\"" ++ classes ++ "\">"
 
         , if showTOC
             then unlines
                 [ "    <div id=\"sidebar\">"
-                , "       <h4>On this page:</h4>"
+                , "      <form class=\"search\" action=\"javascript:void(0)\">"
+                , "        <input type=\"text\" id=\"search\" placeholder=\"Search&hellip;\" />"
+                , "      </form>"
+                , "      <ul class=\"search-results\"></ul>"
+                , "      <h4>On this page:</h4>"
                 , toc
                 , case parent of
                     Nothing -> ""
@@ -262,6 +284,47 @@ getAObject = do
         (Slot (single "state" PThis) (Haskell (toDyn s)))
 
     return (sectionA s)
+
+searchTags :: Section -> AVM [(String, String, String)]
+searchTags s = do
+    t <- build (titleText (sectionTitle s))
+    u <- sectionURL s
+
+    tag <-
+        case titleTag (sectionTitle s) of
+            Nothing -> return []
+            Just s -> do
+                x <- buildForString' s
+                if null x
+                    then return []
+                    else return [(stripTags x, prettyTag u x, u)]
+
+    bs <- forM (sectionBindings s) $ \b -> do
+        Just bu <- findBinding b s
+        s <- getAObject
+        String s <- lift . dispatch $
+            keyword'
+                ["highlight"]
+                [s, string $ bindingName b]
+                [option "autolink" (Boolean False)]
+
+        return (bindingName b, withParent (linkTo bu (fromText s)) u t, bu)
+
+    subts <- forM (subSections s) $ \c -> do
+        ts <- searchTags c
+        case ts of
+            ((ct, cpt, cu):ts) ->
+                return ((ct, withParent cpt u t, cu) : ts)
+
+    return ([(stripTags t, linkTo u t, u)] ++ tag ++ bs ++ concat subts)
+  where
+    prettyTag u t =
+        "<span class=\"tag\">tag: <code>" ++ linkTo u t ++ "</code></span>"
+
+    linkTo u x = "<a href=\"" ++ u ++ "\">" ++ x ++ "</a>"
+
+    withParent c u t = c ++
+        " <span class=\"parent\">in " ++ linkTo u t ++ "</span>"
 
 findSection :: String -> Section -> AVM (Maybe Section)
 findSection n s = do

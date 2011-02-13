@@ -6,7 +6,7 @@ import Data.IORef
 import Data.Typeable
 import Text.Parsec (SourcePos)
 
-import Atomo.Lexer.Base (TaggedToken)
+import Atomo.Lexer.Base (TaggedToken, isOperator)
 import qualified Atomo.Types as AT
 
 data Title =
@@ -22,6 +22,7 @@ data Style
     | TOC
     | Unnumbered
     | Annotated
+    | Slides
     | Class String
     | Styles [Style]
     deriving (Eq, Show, Typeable)
@@ -100,6 +101,7 @@ styleToClass (Class s) = s
 styleToClass TOC = "table-of-contents"
 styleToClass Unnumbered = "unnumbered"
 styleToClass Annotated = "annotated"
+styleToClass Slides = "slides"
 styleToClass None = "normal"
 styleToClass (Styles ss) = unwords (map styleToClass ss)
 
@@ -123,8 +125,12 @@ defKey d =
         _ -> error $ "no defKey for: " ++ show (defThumb d)
 
 bindingID :: BindingKey -> String
-bindingID (KeywordKey ns) = "definition_" ++ concatMap (++ ":") ns
-bindingID (SingleKey n) = "definition_" ++ n
+bindingID b = "definition_" ++ bindingName b
+
+bindingName :: BindingKey -> String
+bindingName (KeywordKey ns) =
+    concatMap (\n -> if isOperator n then n else n ++ ":") ns
+bindingName (SingleKey n) = n
 
 runAVM :: AVM a -> Section -> AVM a
 runAVM a s = lift (evalStateT a s)
@@ -151,5 +157,3 @@ newSection f = do
         , sectionPath = ""
         , sectionA = error "no section anatomy"
         }
-
-

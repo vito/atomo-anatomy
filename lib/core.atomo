@@ -17,6 +17,22 @@ A item: s is: v := (s in-tag: "dt") .. (v in-tag: "dd")
 A verbatim: (s: String) :=
   s escape in-tag: "pre class=\"verbatim\""
 
+A title: (n: String) :=
+  f"<h1>%s</h1>" (% n)
+    in-tag: "div class=\"slide title-only\""
+
+A title: (n: String) subtitle: (s: String) :=
+  f"<div class=\"body\"><h1>%s</h1><p>%s</p></div>" (% (n, s))
+    in-tag: "div class=\"slide title\""
+
+A title: (n: String) body: (s: String) :=
+  f"<h2>%s</h2><div class=\"body\">%s</div>" (% (n, s))
+    in-tag: "div class=\"slide\""
+
+A continue: (n: String) body: (s: String) :=
+  f"<h2>%s <span class=\"continue\">(cont'd)</span></h2><div class=\"body\">%s</div>" (% (n, s))
+    in-tag: "div class=\"slide continue\""
+
 -- annotated source code
 (a: A) heading: (h: String) :=
   "<tr><th class=\"prose\"><h1>" .. h .. "</h1></th><th class=\"code\"></th></tr>"
