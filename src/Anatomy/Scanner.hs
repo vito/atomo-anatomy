@@ -84,6 +84,21 @@ scan depth num path ss' = do
             { sectionBody = sectionBody acc ++ [InlineDefinition def (Just sb)]
             , sectionBindings = defKey def : sectionBindings acc
             }) ss
+    scan' acc (KeywordDispatch ["local"] [sb]:ss) = do
+        body <- buildForString sb
+
+        def <- parseDefinition body
+        scan' (acc
+            { sectionBody = sectionBody acc ++ [InlineDefinition def Nothing]
+            , sectionBindings = LocalKey (defKey def) : sectionBindings acc
+            }) ss
+    scan' acc (KeywordDispatch ["local", "body"] [sd, sb]:ss) = do
+        body <- buildForString sd
+        def <- parseDefinition body
+        scan' (acc
+            { sectionBody = sectionBody acc ++ [InlineDefinition def (Just sb)]
+            , sectionBindings = LocalKey (defKey def) : sectionBindings acc
+            }) ss
     scan' acc (SingleDispatch "table-of-contents":ss) = do
         liftIO (putStrLn "table of contents")
 

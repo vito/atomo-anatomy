@@ -30,6 +30,7 @@ data Style
 data BindingKey
     = KeywordKey [String]
     | SingleKey String
+    | LocalKey BindingKey
     deriving (Eq, Ord, Show, Typeable)
 
 data Definition =
@@ -131,6 +132,7 @@ bindingName :: BindingKey -> String
 bindingName (KeywordKey ns) =
     concatMap (\n -> if isOperator n then n else n ++ ":") ns
 bindingName (SingleKey n) = n
+bindingName (LocalKey k) = bindingName k
 
 runAVM :: AVM a -> Section -> AVM a
 runAVM a s = lift (evalStateT a s)

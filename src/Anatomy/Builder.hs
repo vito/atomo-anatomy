@@ -365,7 +365,7 @@ findFirstSection k (s:ss) = do
 
 findBinding :: BindingKey -> Section -> AVM (Maybe String)
 findBinding k s =
-    if k `elem` sectionBindings s
+    if k `elem` bs || LocalKey k `elem` bs
         then fmap Just (bindingURL s k)
         else do
 
@@ -376,6 +376,8 @@ findBinding k s =
         (Nothing, Just pr) -> do
             p <- liftIO (readIORef pr)
             findBinding k p
+  where
+    bs = sectionBindings s
 
 findBindingDownward :: BindingKey -> Section -> AVM (Maybe String)
 findBindingDownward k s =
