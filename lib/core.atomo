@@ -58,6 +58,12 @@ A link: (name: String) to: (url: String) :=
 (a: A) hl: (s: String) :=
   (a highlight: s) in-tag: "code"
 
+-- pretty-printing without autolinking
+(a: A) ref: (e: Expression) :=
+  a ref: (a evaluate: e)
+(a: A) ref: (s: String) :=
+  (a highlight: s &auto-link: False) in-tag: "code"
+
 -- pretty-printing a block of code
 (a: A) atomo: (s: String) on: (t: Expression) :=
   a atomo: s on: (a evaluate: t)

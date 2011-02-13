@@ -100,10 +100,10 @@ load = do
             Right ts ->
                 liftM (string . renderHtml . (div ! class_ (stringValue "highlight")) . pre) (runAVM' (autoLink ts) st)
 
-    [$p|(a: A) highlight: (s: String) &autolink|] =: do
+    [$p|(a: A) highlight: (s: String) &auto-link|] =: do
         s <- getText [$e|s|]
         Haskell ds <- eval [$e|a state|]
-        Boolean auto <- here "autolink" >>= findBoolean
+        Boolean auto <- here "auto-link" >>= findBoolean
 
         let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
