@@ -28,24 +28,24 @@ import Paths_anatomy
 
 load :: VM ()
 load = do
-    ([$p|A|] =::) =<< eval [$e|Object clone|]
+    ([p|A|] =::) =<< eval [e|Object clone|]
 
     liftIO (getDataFileName "lib/core.atomo") >>= loadFile
 
-    [$p|(a: A) new: (fn: String)|] =: do
-        fn <- getString [$e|fn|]
+    [p|(a: A) new: (fn: String)|] =: do
+        fn <- getString [e|fn|]
 
         path <- fmap takeDirectory . liftIO $ canonicalizePath fn
 
         liftIO (putStrLn ("path: " ++ path))
         ast <- parseFile fn
         sec <- scan 0 1 path ast
-        [$p|a state|] =:: Haskell (toDyn sec)
+        [p|a state|] =:: Haskell (toDyn sec)
         here "a"
 
-    [$p|(a: A) url-for: (e: Expression)|] =: do
+    [p|(a: A) url-for: (e: Expression)|] =: do
         Expression ae <- here "e" >>= findExpression
-        Haskell ds <- eval [$e|a state|]
+        Haskell ds <- eval [e|a state|]
 
         let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
@@ -73,9 +73,9 @@ load = do
             Just u ->
                 return (keyParticle ["ok"] [Nothing, Just (string u)])
 
-    [$p|(a: A) reference: (s: String)|] =: do
-        n <- getString [$e|s|]
-        Haskell ds <- eval [$e|a state|]
+    [p|(a: A) reference: (s: String)|] =: do
+        n <- getString [e|s|]
+        Haskell ds <- eval [e|a state|]
 
         let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
@@ -88,9 +88,9 @@ load = do
                     name <- buildForString' (titleText (sectionTitle s))
                     return (string $ "<a href=\"" ++ url ++ "\">" ++ name ++ "</a>")
 
-    [$p|(a: A) atomo: (s: String)|] =: do
-        s <- getText [$e|s|]
-        Haskell ds <- eval [$e|a state|]
+    [p|(a: A) atomo: (s: String)|] =: do
+        s <- getText [e|s|]
+        Haskell ds <- eval [e|a state|]
 
         let st = fromDyn ds (error "hotlink A is invalid") :: Section
 
@@ -100,9 +100,9 @@ load = do
             Right ts ->
                 liftM (string . renderHtml . (div ! class_ (stringValue "highlight")) . pre) (runAVM' (autoLink ts) st)
 
-    [$p|(a: A) highlight: (s: String) &auto-link|] =: do
-        s <- getText [$e|s|]
-        Haskell ds <- eval [$e|a state|]
+    [p|(a: A) highlight: (s: String) &auto-link|] =: do
+        s <- getText [e|s|]
+        Haskell ds <- eval [e|a state|]
         Boolean auto <- here "auto-link" >>= findBoolean
 
         let st = fromDyn ds (error "hotlink A is invalid") :: Section
@@ -115,9 +115,9 @@ load = do
             Right ts ->
                 return (string (renderHtml (formatInline ts)))
 
-    [$p|(a: A) highlight: (s: String) as: (lang: String)|] =: do
-        s <- getText [$e|s|]
-        l <- getString [$e|lang|] >>= \n ->
+    [p|(a: A) highlight: (s: String) as: (lang: String)|] =: do
+        s <- getText [e|s|]
+        l <- getString [e|lang|] >>= \n ->
             case HL.lexerFromFilename ("." ++ n) of
                 Nothing -> raise ["unknown-lexer"] [string n]
                 Just l -> return l
