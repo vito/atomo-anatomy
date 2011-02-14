@@ -114,6 +114,15 @@ dd {
 #sidebar .toc {
     margin-bottom: 2em;
 }
+#sidebar .toc .toggle {
+    margin-left: .5em;
+    font-size: 10px;
+    cursor: pointer;
+    color: #777;
+}
+#sidebar .toc ol {
+    margin: 0 0 0 1em;
+}
 
 #content {
     padding: 2em;
