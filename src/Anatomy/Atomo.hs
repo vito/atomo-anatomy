@@ -179,7 +179,7 @@ autoLink = autoLink' ([], "")
 restOf :: [HL.Token] -> [String]
 restOf [] = []
 restOf (HL.Token _ "(":ts) =
-    restOf (drop 1 $ dropWhile ((/= "(") . HL.tText) $ ts)
+    restOf (drop 1 $ dropWhile ((/= ")") . HL.tText) $ ts)
 restOf (HL.Token _ "{":ts) =
     restOf (drop 1 $ dropWhile ((/= "}") . HL.tText) $ ts)
 restOf (HL.Token _ "[":ts) =
@@ -189,6 +189,7 @@ restOf (HL.Token _ "}":_) = []
 restOf (HL.Token _ "]":_) = []
 restOf (HL.Token (HL.Name HL.:. HL.Function) n:ts) =
     init (fromBS n) : restOf ts
+restOf (HL.Token HL.Operator _:_) = []
 restOf (HL.Token HL.Text x:_)
     | toEnum (fromEnum '\n') `BS.elem` x = []
 restOf (_:ts) = restOf ts
